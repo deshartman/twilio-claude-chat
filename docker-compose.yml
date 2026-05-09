@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: twilio-chat-db
+    environment:
+      POSTGRES_USER: twilio_chat
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: twilio_chat
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+      - ./apps/server/src/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U twilio_chat"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
