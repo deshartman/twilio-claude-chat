@@ -6,6 +6,7 @@ import websocket from "@fastify/websocket";
 import { authRoutes } from "./auth/routes.js";
 import { accountRoutes } from "./accounts/routes.js";
 import { registerChatWs } from "./agent/ws.js";
+import { onCacheEvent } from "./agent/cache/registry.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
 const WEB_ORIGIN = process.env.WEB_ORIGIN ?? "http://localhost:5173";
@@ -29,6 +30,10 @@ async function main() {
   await app.register(cookie, { secret: process.env.SESSION_SECRET });
   await app.register(cors, { origin: WEB_ORIGIN, credentials: true });
   await app.register(websocket);
+
+  onCacheEvent((stat, key) => {
+    app.log.info({ cache: stat, type: key.resourceType, account: key.accountId }, `cache ${stat}`);
+  });
 
   app.get("/api/health", async () => ({ ok: true }));
 

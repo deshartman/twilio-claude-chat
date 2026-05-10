@@ -54,6 +54,23 @@ CREATE TABLE IF NOT EXISTS chat_sessions (
 );
 CREATE INDEX IF NOT EXISTS chat_sessions_user_idx ON chat_sessions(user_id);
 
+-- Phase 2: per-account Twilio API response cache. JSONB payload + TTL.
+-- Durable half of the cache layer; the in-process inFlight Map handles
+-- same-process request coalescing. Single-machine deploy means we don't
+-- need cross-instance invalidation.
+CREATE TABLE IF NOT EXISTS resource_cache (
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  account_id UUID NOT NULL REFERENCES twilio_accounts(id) ON DELETE CASCADE,
+  resource_type TEXT NOT NULL,
+  query_hash TEXT NOT NULL,
+  data JSONB NOT NULL,
+  fetched_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (account_id, resource_type, query_hash)
+);
+CREATE INDEX IF NOT EXISTS resource_cache_user_idx ON resource_cache(user_id);
+CREATE INDEX IF NOT EXISTS resource_cache_expires_idx ON resource_cache(expires_at);
+
 CREATE TABLE IF NOT EXISTS audit_log (
   id BIGSERIAL PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
