@@ -24,9 +24,11 @@ CREATE TABLE IF NOT EXISTS twilio_accounts (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   friendly_name TEXT NOT NULL,
   account_sid TEXT NOT NULL,
+  auth_mode TEXT NOT NULL DEFAULT 'api_key' CHECK (auth_mode IN ('api_key', 'auth_token')),
   is_subaccount BOOLEAN NOT NULL DEFAULT false,
   parent_account_id UUID REFERENCES twilio_accounts(id) ON DELETE SET NULL,
-  -- AES-256-GCM sealed blob: JSON.stringify({sid, secret}).
+  -- AES-256-GCM sealed blob: JSON.stringify of credential object.
+  -- api_key mode: {authMode:"api_key", sid, secret}.  auth_token mode: {authMode:"auth_token", authToken}.
   -- One iv + tag per row. Never encrypt separate fields with the same iv.
   credentials_ct BYTEA NOT NULL,
   iv BYTEA NOT NULL,
@@ -36,6 +38,10 @@ CREATE TABLE IF NOT EXISTS twilio_accounts (
   UNIQUE (user_id, friendly_name)
 );
 CREATE INDEX IF NOT EXISTS twilio_accounts_user_idx ON twilio_accounts(user_id);
+-- Phase 2 additive: ensure auth_mode exists on pre-existing tables.
+ALTER TABLE twilio_accounts
+  ADD COLUMN IF NOT EXISTS auth_mode TEXT NOT NULL DEFAULT 'api_key'
+  CHECK (auth_mode IN ('api_key', 'auth_token'));
 
 CREATE TABLE IF NOT EXISTS chat_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
