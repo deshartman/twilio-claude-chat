@@ -2,6 +2,40 @@ import { tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
 import { buildTwilioClient, resolveAccountHint } from "../context.js";
 import { notFoundOrAmbiguous, textResult } from "./_resolve.js";
+import { cachedTwilioCall, invalidateCache } from "../cache/registry.js";
+
+const PHONE_NUMBER_TTL_MS = 5 * 60 * 1000;
+
+type CachedPhoneNumber = {
+  sid: string;
+  phone_number: string | null;
+  friendly_name: string | null;
+  voice_url: string | null;
+  sms_url: string | null;
+  capabilities: Record<string, boolean>;
+};
+
+async function getCachedPhoneNumberList(
+  userId: string,
+  accountId: string,
+  client: Awaited<ReturnType<typeof buildTwilioClient>>,
+): Promise<CachedPhoneNumber[]> {
+  return cachedTwilioCall<CachedPhoneNumber[]>(
+    { userId, accountId, resourceType: "phone_numbers" },
+    PHONE_NUMBER_TTL_MS,
+    async () => {
+      const all = await client.incomingPhoneNumbers.list({ limit: 1000 });
+      return all.map((n) => ({
+        sid: n.sid,
+        phone_number: n.phoneNumber ?? null,
+        friendly_name: n.friendlyName ?? null,
+        voice_url: n.voiceUrl ?? null,
+        sms_url: n.smsUrl ?? null,
+        capabilities: (n.capabilities as Record<string, boolean>) ?? {},
+      }));
+    },
+  );
+}
 
 export function buildListPhoneNumbersTool(userId: string, activeAccountId: string | null) {
   return tool(
@@ -19,12 +53,11 @@ export function buildListPhoneNumbersTool(userId: string, activeAccountId: strin
       if (resolved.kind !== "resolved") return err!;
 
       const client = await buildTwilioClient(userId, resolved.account.id);
-      const all = await client.incomingPhoneNumbers.list({ limit: 1000 });
+      const all = await getCachedPhoneNumberList(userId, resolved.account.id, client);
       const filtered = all.filter((n) => {
-        if (country_code && !n.phoneNumber?.startsWith(country_code)) return false;
+        if (country_code && !n.phone_number?.startsWith(country_code)) return false;
         if (capabilities) {
-          const caps = n.capabilities as Record<string, boolean>;
-          if (!capabilities.every((c) => caps[c])) return false;
+          if (!capabilities.every((c) => n.capabilities[c])) return false;
         }
         return true;
       });
@@ -35,14 +68,7 @@ export function buildListPhoneNumbersTool(userId: string, activeAccountId: strin
           account_sid: resolved.account.account_sid,
         },
         count: filtered.length,
-        numbers: filtered.map((n) => ({
-          sid: n.sid,
-          phone_number: n.phoneNumber,
-          friendly_name: n.friendlyName,
-          voice_url: n.voiceUrl,
-          sms_url: n.smsUrl,
-          capabilities: n.capabilities,
-        })),
+        numbers: filtered,
       });
     },
   );
@@ -65,31 +91,39 @@ export function buildFetchPhoneNumberTool(userId: string, activeAccountId: strin
       const client = await buildTwilioClient(userId, resolved.account.id);
       let sid = phone_number_or_sid;
       if (!sid.startsWith("PN")) {
-        const found = await client.incomingPhoneNumbers.list({ phoneNumber: sid, limit: 1 });
-        if (found.length === 0) {
+        const cached = await getCachedPhoneNumberList(userId, resolved.account.id, client);
+        const match = cached.find((n) => n.phone_number === phone_number_or_sid);
+        if (!match) {
           return {
             isError: true as const,
             content: [{ type: "text" as const, text: `No number matched "${phone_number_or_sid}".` }],
           };
         }
-        sid = found[0].sid;
+        sid = match.sid;
       }
-      const n = await client.incomingPhoneNumbers(sid).fetch();
-      return textResult({
-        sid: n.sid,
-        phone_number: n.phoneNumber,
-        friendly_name: n.friendlyName,
-        voice_url: n.voiceUrl,
-        voice_method: n.voiceMethod,
-        voice_fallback_url: n.voiceFallbackUrl,
-        sms_url: n.smsUrl,
-        sms_method: n.smsMethod,
-        sms_fallback_url: n.smsFallbackUrl,
-        status_callback: n.statusCallback,
-        capabilities: n.capabilities,
-        origin: n.origin,
-        date_created: n.dateCreated,
-      });
+      const detail = await cachedTwilioCall(
+        { userId, accountId: resolved.account.id, resourceType: "phone_number", query: { sid } },
+        PHONE_NUMBER_TTL_MS,
+        async () => {
+          const n = await client.incomingPhoneNumbers(sid).fetch();
+          return {
+            sid: n.sid,
+            phone_number: n.phoneNumber,
+            friendly_name: n.friendlyName,
+            voice_url: n.voiceUrl,
+            voice_method: n.voiceMethod,
+            voice_fallback_url: n.voiceFallbackUrl,
+            sms_url: n.smsUrl,
+            sms_method: n.smsMethod,
+            sms_fallback_url: n.smsFallbackUrl,
+            status_callback: n.statusCallback,
+            capabilities: n.capabilities,
+            origin: n.origin,
+            date_created: n.dateCreated,
+          };
+        },
+      );
+      return textResult(detail);
     },
   );
 }
@@ -177,6 +211,7 @@ export function buildUpdatePhoneNumberConfigTool(userId: string, activeAccountId
       if (updates.friendly_name) payload.friendlyName = updates.friendly_name;
 
       const updated = await client.incomingPhoneNumbers(sid).update(payload);
+      await invalidateCache(resolved.account.id, ["phone_numbers", "phone_number"]);
 
       return textResult({
         sid: updated.sid,
@@ -250,6 +285,7 @@ export function buildBuyPhoneNumberTool(userId: string, activeAccountId: string 
         smsUrl: sms_url,
         friendlyName: friendly_name,
       });
+      await invalidateCache(resolved.account.id, ["phone_numbers", "phone_number"]);
 
       return textResult({
         sid: bought.sid,
@@ -290,6 +326,13 @@ export function buildReleasePhoneNumberTool(userId: string, activeAccountId: str
         sid = found[0].sid;
       }
       await client.incomingPhoneNumbers(sid).remove();
+      // Release can also detach the PN from a messaging service, so drop sender caches too.
+      await invalidateCache(resolved.account.id, [
+        "phone_numbers",
+        "phone_number",
+        "messaging_service_senders",
+        "messaging_service",
+      ]);
       return textResult({ released_sid: sid, phone_number_or_sid, status: "released" });
     },
   );

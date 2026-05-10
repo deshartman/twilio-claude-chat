@@ -2,6 +2,9 @@ import { tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
 import { buildTwilioClient, resolveAccountHint } from "../context.js";
 import { notFoundOrAmbiguous, textResult } from "./_resolve.js";
+import { cachedTwilioCall, invalidateCache } from "../cache/registry.js";
+
+const MESSAGING_SERVICE_TTL_MS = 5 * 60 * 1000;
 
 export function buildListMessagingServicesTool(userId: string, activeAccountId: string | null) {
   return tool(
@@ -15,23 +18,30 @@ export function buildListMessagingServicesTool(userId: string, activeAccountId: 
       if (resolved.kind !== "resolved") return err!;
 
       const client = await buildTwilioClient(userId, resolved.account.id);
-      const services = await client.messaging.v1.services.list({ limit: 100 });
+      const services = await cachedTwilioCall(
+        { userId, accountId: resolved.account.id, resourceType: "messaging_services" },
+        MESSAGING_SERVICE_TTL_MS,
+        async () => {
+          const list = await client.messaging.v1.services.list({ limit: 100 });
+          return list.map((s) => ({
+            sid: s.sid,
+            friendly_name: s.friendlyName,
+            inbound_request_url: s.inboundRequestUrl,
+            inbound_method: s.inboundMethod,
+            status_callback: s.statusCallback,
+            use_case: s.usecase,
+            us_app_to_person_registered: s.usAppToPersonRegistered,
+            date_created: s.dateCreated,
+          }));
+        },
+      );
       return textResult({
         account: {
           friendly_name: resolved.account.friendly_name,
           account_sid: resolved.account.account_sid,
         },
         count: services.length,
-        services: services.map((s) => ({
-          sid: s.sid,
-          friendly_name: s.friendlyName,
-          inbound_request_url: s.inboundRequestUrl,
-          inbound_method: s.inboundMethod,
-          status_callback: s.statusCallback,
-          use_case: s.usecase,
-          us_app_to_person_registered: s.usAppToPersonRegistered,
-          date_created: s.dateCreated,
-        })),
+        services,
       });
     },
   );
@@ -52,26 +62,41 @@ export function buildFetchMessagingServiceTool(userId: string, activeAccountId: 
       if (resolved.kind !== "resolved") return err!;
 
       const client = await buildTwilioClient(userId, resolved.account.id);
-      const svc = client.messaging.v1.services(service_sid);
-      const [service, phoneNumbers] = await Promise.all([svc.fetch(), svc.phoneNumbers.list({ limit: 100 })]);
-      return textResult({
-        service: {
-          sid: service.sid,
-          friendly_name: service.friendlyName,
-          inbound_request_url: service.inboundRequestUrl,
-          status_callback: service.statusCallback,
-          use_case: service.usecase,
-          us_app_to_person_registered: service.usAppToPersonRegistered,
-          date_created: service.dateCreated,
+      const result = await cachedTwilioCall(
+        {
+          userId,
+          accountId: resolved.account.id,
+          resourceType: "messaging_service",
+          query: { service_sid },
         },
-        senders: phoneNumbers.map((p) => ({
-          sid: p.sid,
-          phone_number: p.phoneNumber,
-          capabilities: p.capabilities,
-          country_code: p.countryCode,
-          date_created: p.dateCreated,
-        })),
-      });
+        MESSAGING_SERVICE_TTL_MS,
+        async () => {
+          const svc = client.messaging.v1.services(service_sid);
+          const [service, phoneNumbers] = await Promise.all([
+            svc.fetch(),
+            svc.phoneNumbers.list({ limit: 100 }),
+          ]);
+          return {
+            service: {
+              sid: service.sid,
+              friendly_name: service.friendlyName,
+              inbound_request_url: service.inboundRequestUrl,
+              status_callback: service.statusCallback,
+              use_case: service.usecase,
+              us_app_to_person_registered: service.usAppToPersonRegistered,
+              date_created: service.dateCreated,
+            },
+            senders: phoneNumbers.map((p) => ({
+              sid: p.sid,
+              phone_number: p.phoneNumber,
+              capabilities: p.capabilities,
+              country_code: p.countryCode,
+              date_created: p.dateCreated,
+            })),
+          };
+        },
+      );
+      return textResult(result);
     },
   );
 }
@@ -100,6 +125,7 @@ export function buildCreateMessagingServiceTool(userId: string, activeAccountId:
         statusCallback: status_callback,
         usecase: use_case,
       });
+      await invalidateCache(resolved.account.id, ["messaging_services"]);
       return textResult({
         sid: created.sid,
         friendly_name: created.friendlyName,
@@ -141,6 +167,13 @@ export function buildAddSenderToMessagingServiceTool(userId: string, activeAccou
       const added = await client.messaging.v1
         .services(service_sid)
         .phoneNumbers.create({ phoneNumberSid: pnSid });
+      // Invalidate both the generic senders cache and the per-service fetch entry
+      // so the next fetch_messaging_service and list_messaging_services both refresh.
+      await invalidateCache(resolved.account.id, [
+        "messaging_service",
+        "messaging_services",
+        "messaging_service_senders",
+      ]);
       return textResult({
         service_sid,
         sender_sid: added.sid,
