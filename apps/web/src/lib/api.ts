@@ -37,10 +37,13 @@ export const api = {
     jsonReq<{ ok: true }>(`/api/accounts/${id}`, { method: "DELETE" }),
 };
 
+export type AuthMode = "api_key" | "auth_token";
+
 export type AccountPublic = {
   id: string;
   friendly_name: string;
   account_sid: string;
+  auth_mode: AuthMode;
   is_subaccount: boolean;
   parent_account_id: string | null;
   created_at: string;
@@ -50,11 +53,12 @@ export type AccountPublic = {
 export type NewAccountInput = {
   friendly_name: string;
   account_sid: string;
-  api_key_sid: string;
-  api_key_secret: string;
   is_subaccount?: boolean;
   parent_account_id?: string;
-};
+} & (
+  | { auth_mode: "api_key"; api_key_sid: string; api_key_secret: string }
+  | { auth_mode: "auth_token"; auth_token: string }
+);
 
 export type TurnRequest = {
   chat_session_id: string | null;

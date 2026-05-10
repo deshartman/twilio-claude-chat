@@ -2,21 +2,35 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireUser } from "../auth/session.js";
 import { createAccount, deleteAccount, listAccountsForUser } from "./repo.js";
+import type { AccountRow } from "./repo.js";
 
-const newAccountSchema = z.object({
+const commonAccountFields = {
   friendly_name: z.string().min(1).max(80),
   account_sid: z.string().regex(/^AC[0-9a-f]{32}$/i, "must start with AC then 32 hex chars"),
-  api_key_sid: z.string().regex(/^SK[0-9a-f]{32}$/i, "must start with SK then 32 hex chars"),
-  api_key_secret: z.string().min(16).max(128),
   is_subaccount: z.boolean().optional(),
   parent_account_id: z.string().uuid().optional(),
-});
+};
 
-function publicShape<T extends { id: string; friendly_name: string; account_sid: string; is_subaccount: boolean; parent_account_id: string | null; created_at: Date; last_used_at: Date | null }>(row: T) {
+const newAccountSchema = z.discriminatedUnion("auth_mode", [
+  z.object({
+    ...commonAccountFields,
+    auth_mode: z.literal("api_key"),
+    api_key_sid: z.string().regex(/^SK[0-9a-f]{32}$/i, "must start with SK then 32 hex chars"),
+    api_key_secret: z.string().min(16).max(128),
+  }),
+  z.object({
+    ...commonAccountFields,
+    auth_mode: z.literal("auth_token"),
+    auth_token: z.string().regex(/^[0-9a-f]{32}$/i, "auth token must be 32 hex chars"),
+  }),
+]);
+
+function publicShape(row: AccountRow) {
   return {
     id: row.id,
     friendly_name: row.friendly_name,
     account_sid: row.account_sid,
+    auth_mode: row.auth_mode,
     is_subaccount: row.is_subaccount,
     parent_account_id: row.parent_account_id,
     created_at: row.created_at.toISOString(),

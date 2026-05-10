@@ -41,5 +41,8 @@ export async function resolveAccountHint(
 export async function buildTwilioClient(userId: string, accountId: string): Promise<twilio.Twilio> {
   const creds = await loadCredentialsForAccount(userId, accountId);
   if (!creds) throw new Error(`account not found or not owned by user`);
-  return twilio(creds.api_key_sid, creds.api_key_secret, { accountSid: creds.account_sid });
+  if (creds.auth_mode === "api_key") {
+    return twilio(creds.api_key_sid, creds.api_key_secret, { accountSid: creds.account_sid });
+  }
+  return twilio(creds.account_sid, creds.auth_token);
 }
