@@ -39,6 +39,32 @@ export const api = {
     jsonReq<{ ok: true; scan_status: ScanStatus }>(`/api/accounts/${id}/rescan`, {
       method: "POST",
     }),
+  listChatSessions: () =>
+    jsonReq<{ sessions: ChatSessionPublic[] }>("/api/chat/sessions"),
+  getChatSession: (id: string) =>
+    jsonReq<{ session: ChatSessionPublic; messages: ChatMessagePublic[] }>(
+      `/api/chat/sessions/${id}`,
+    ),
+  deleteChatSession: (id: string) =>
+    jsonReq<{ ok: true }>(`/api/chat/sessions/${id}`, { method: "DELETE" }),
+};
+
+export type ChatSessionPublic = {
+  id: string;
+  active_twilio_account_id: string | null;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MessageKind = "user" | "assistant" | "tool_use" | "tool_result";
+
+export type ChatMessagePublic = {
+  id: string;
+  seq: number;
+  kind: MessageKind;
+  payload: Record<string, unknown>;
+  created_at: string;
 };
 
 export type AuthMode = "api_key" | "auth_token";
