@@ -64,6 +64,20 @@ CREATE TABLE IF NOT EXISTS chat_sessions (
 );
 CREATE INDEX IF NOT EXISTS chat_sessions_user_idx ON chat_sessions(user_id);
 
+-- Phase 2 D1: persisted chat messages (user, assistant, tool_use, tool_result).
+-- payload JSONB matches the client ChatMessage discriminated union so the UI
+-- can re-hydrate without server-side reshaping. seq is monotonic per session.
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  chat_session_id UUID NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,
+  seq INT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('user', 'assistant', 'tool_use', 'tool_result')),
+  payload JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (chat_session_id, seq)
+);
+CREATE INDEX IF NOT EXISTS chat_messages_session_idx ON chat_messages(chat_session_id, seq);
+
 -- Phase 2: per-account Twilio API response cache. JSONB payload + TTL.
 -- Durable half of the cache layer; the in-process inFlight Map handles
 -- same-process request coalescing. Single-machine deploy means we don't

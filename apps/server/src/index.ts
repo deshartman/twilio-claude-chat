@@ -5,6 +5,7 @@ import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
 import { authRoutes } from "./auth/routes.js";
 import { accountRoutes } from "./accounts/routes.js";
+import { chatRoutes } from "./chat/routes.js";
 import { registerChatWs } from "./agent/ws.js";
 import { onCacheEvent } from "./agent/cache/registry.js";
 
@@ -39,6 +40,7 @@ async function main() {
 
   await app.register(authRoutes);
   await app.register(accountRoutes);
+  await app.register(chatRoutes);
   await app.register(registerChatWs);
 
   await app.listen({ port: PORT, host: "0.0.0.0" });
