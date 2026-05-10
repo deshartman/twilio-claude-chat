@@ -9,6 +9,7 @@ import {
   getChatSession,
   setTitleIfEmpty,
 } from "../chat/repo.js";
+import { buildTranscriptPreamble } from "../chat/preamble.js";
 
 type RawData = Buffer | ArrayBuffer | Buffer[];
 
@@ -132,6 +133,12 @@ async function handleTurn(
   await appendChatMessage(sessionId, "user", { kind: "user", text: msg.prompt });
   await setTitleIfEmpty(sessionId, msg.prompt);
 
+  // Build the prompt the model actually receives: prior-turn transcript
+  // with a staleness warning + the live user prompt. Empty preamble on a
+  // fresh session — falls back to just the prompt.
+  const preamble = await buildTranscriptPreamble(sessionId, msg.prompt);
+  const resolvedPrompt = preamble || msg.prompt;
+
   // Audit entries keyed by tool_use_id (model-assigned). Each Twilio tool
   // call writes a row after the tool_result lands.
   const auditPending = new Map<
@@ -141,7 +148,7 @@ async function handleTurn(
 
   const turn = runTurn({
     userId,
-    prompt: msg.prompt,
+    prompt: resolvedPrompt,
     activeAccountId: msg.active_twilio_account_id,
     confirmDelegate: async ({ confirm_id, tool_name, tool_input, summary }) => {
       send({ type: "confirm_request", confirm_id, tool_name, tool_input, summary });
