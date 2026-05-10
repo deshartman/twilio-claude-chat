@@ -35,9 +35,14 @@ export const api = {
     }),
   deleteAccount: (id: string) =>
     jsonReq<{ ok: true }>(`/api/accounts/${id}`, { method: "DELETE" }),
+  rescanAccount: (id: string) =>
+    jsonReq<{ ok: true; scan_status: ScanStatus }>(`/api/accounts/${id}/rescan`, {
+      method: "POST",
+    }),
 };
 
 export type AuthMode = "api_key" | "auth_token";
+export type ScanStatus = "pending" | "running" | "ready" | "failed";
 
 export type AccountPublic = {
   id: string;
@@ -48,6 +53,8 @@ export type AccountPublic = {
   parent_account_id: string | null;
   created_at: string;
   last_used_at: string | null;
+  scan_status: ScanStatus;
+  scan_error: string | null;
 };
 
 export type NewAccountInput = {

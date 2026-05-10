@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { api, type AuthMode, type NewAccountInput } from "../lib/api.ts";
+import { api, type AccountPublic, type AuthMode, type NewAccountInput, type ScanStatus } from "../lib/api.ts";
 import type { AppContext } from "../App.tsx";
 
 type FormState = {
@@ -23,11 +23,70 @@ const emptyForm: FormState = {
   auth_token: "",
 };
 
+function statusChipClass(s: ScanStatus): string {
+  switch (s) {
+    case "pending":
+      return "bg-slate-100 text-slate-600 border-slate-200";
+    case "running":
+      return "bg-amber-50 text-amber-700 border-amber-200";
+    case "ready":
+      return "bg-emerald-50 text-emerald-700 border-emerald-200";
+    case "failed":
+      return "bg-red-50 text-red-700 border-red-200";
+  }
+}
+
+function StatusChip({ account }: { account: AccountPublic }) {
+  const label = account.scan_status === "running" ? "scanning…" : account.scan_status;
+  const title =
+    account.scan_status === "failed" && account.scan_error
+      ? account.scan_error
+      : undefined;
+  return (
+    <span
+      className={`inline-block text-[10px] uppercase tracking-wide border px-1.5 py-0.5 rounded ${statusChipClass(account.scan_status)}`}
+      title={title}
+    >
+      {label}
+    </span>
+  );
+}
+
 export function AccountsPage() {
   const { accounts, refreshAccounts } = useOutletContext<AppContext>();
   const [err, setErr] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [busy, setBusy] = useState(false);
+  const [rescanning, setRescanning] = useState<Set<string>>(new Set());
+
+  // Poll while any account is mid-scan. 2s cadence is quick enough to feel
+  // responsive without hammering the API for the common idle case.
+  const anyActive = accounts.some(
+    (a) => a.scan_status === "pending" || a.scan_status === "running",
+  );
+  useEffect(() => {
+    if (!anyActive) return;
+    const id = setInterval(() => {
+      void refreshAccounts();
+    }, 2000);
+    return () => clearInterval(id);
+  }, [anyActive, refreshAccounts]);
+
+  async function rescan(id: string) {
+    setRescanning((prev) => new Set(prev).add(id));
+    try {
+      await api.rescanAccount(id);
+      await refreshAccounts();
+    } catch (ex: unknown) {
+      setErr(ex instanceof Error ? ex.message : "rescan failed");
+    } finally {
+      setRescanning((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -77,23 +136,42 @@ export function AccountsPage() {
           <p className="text-slate-500 text-sm">None yet. Add one below.</p>
         ) : (
           <ul className="divide-y border rounded bg-white">
-            {accounts.map((a) => (
-              <li key={a.id} className="flex items-center justify-between p-3">
-                <div>
-                  <div className="font-medium">{a.friendly_name}</div>
-                  <div className="text-xs text-slate-500 font-mono">
-                    {a.account_sid} · {a.auth_mode === "auth_token" ? "auth token" : "API key"}
-                    {a.is_subaccount && " · subaccount"}
+            {accounts.map((a) => {
+              const isScanning =
+                a.scan_status === "pending" || a.scan_status === "running" || rescanning.has(a.id);
+              return (
+                <li key={a.id} className="flex items-center justify-between p-3">
+                  <div>
+                    <div className="font-medium flex items-center gap-2">
+                      <span>{a.friendly_name}</span>
+                      <StatusChip account={a} />
+                    </div>
+                    <div className="text-xs text-slate-500 font-mono">
+                      {a.account_sid} · {a.auth_mode === "auth_token" ? "auth token" : "API key"}
+                      {a.is_subaccount && " · subaccount"}
+                    </div>
+                    {a.scan_status === "failed" && a.scan_error && (
+                      <div className="text-xs text-red-600 mt-1">{a.scan_error}</div>
+                    )}
                   </div>
-                </div>
-                <button
-                  className="text-red-600 text-sm hover:underline"
-                  onClick={() => del(a.id)}
-                >
-                  Delete
-                </button>
-              </li>
-            ))}
+                  <div className="flex items-center gap-3">
+                    <button
+                      className="text-slate-600 text-sm hover:underline disabled:opacity-40 disabled:no-underline"
+                      onClick={() => rescan(a.id)}
+                      disabled={isScanning}
+                    >
+                      {isScanning ? "Scanning…" : "Rescan"}
+                    </button>
+                    <button
+                      className="text-red-600 text-sm hover:underline"
+                      onClick={() => del(a.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

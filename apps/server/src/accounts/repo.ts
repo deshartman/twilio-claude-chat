@@ -2,6 +2,7 @@ import { pool } from "../db/pool.js";
 import { open, seal } from "../crypto.js";
 
 export type AuthMode = "api_key" | "auth_token";
+export type ScanStatus = "pending" | "running" | "ready" | "failed";
 
 export type AccountRow = {
   id: string;
@@ -13,6 +14,8 @@ export type AccountRow = {
   parent_account_id: string | null;
   created_at: Date;
   last_used_at: Date | null;
+  scan_status: ScanStatus;
+  scan_error: string | null;
 };
 
 export type NewAccountInput = {
@@ -57,7 +60,7 @@ export async function createAccount(input: NewAccountInput): Promise<AccountRow>
     `INSERT INTO twilio_accounts
        (user_id, friendly_name, account_sid, auth_mode, is_subaccount, parent_account_id, credentials_ct, iv, tag)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-     RETURNING id, user_id, friendly_name, account_sid, auth_mode, is_subaccount, parent_account_id, created_at, last_used_at`,
+     RETURNING id, user_id, friendly_name, account_sid, auth_mode, is_subaccount, parent_account_id, created_at, last_used_at, scan_status, scan_error`,
     [
       input.user_id,
       input.friendly_name,
@@ -75,7 +78,7 @@ export async function createAccount(input: NewAccountInput): Promise<AccountRow>
 
 export async function listAccountsForUser(userId: string): Promise<AccountRow[]> {
   const { rows } = await pool.query<AccountRow>(
-    `SELECT id, user_id, friendly_name, account_sid, auth_mode, is_subaccount, parent_account_id, created_at, last_used_at
+    `SELECT id, user_id, friendly_name, account_sid, auth_mode, is_subaccount, parent_account_id, created_at, last_used_at, scan_status, scan_error
        FROM twilio_accounts
       WHERE user_id = $1
       ORDER BY created_at ASC`,
@@ -141,7 +144,7 @@ export async function matchAccountsByHint(
   hint: string,
 ): Promise<AccountRow[]> {
   const { rows } = await pool.query<AccountRow>(
-    `SELECT id, user_id, friendly_name, account_sid, auth_mode, is_subaccount, parent_account_id, created_at, last_used_at
+    `SELECT id, user_id, friendly_name, account_sid, auth_mode, is_subaccount, parent_account_id, created_at, last_used_at, scan_status, scan_error
        FROM twilio_accounts
       WHERE user_id = $1
         AND (friendly_name ILIKE $2 OR account_sid ILIKE $2)
@@ -149,4 +152,41 @@ export async function matchAccountsByHint(
     [userId, `%${hint}%`],
   );
   return rows;
+}
+
+/**
+ * Update pre-scan status. `scan_error` is only persisted on the failed transition;
+ * success transitions clear it. Scoped by user_id so one user can't flip
+ * another user's account state via a misaddressed rescan request.
+ */
+export async function setScanStatus(
+  userId: string,
+  accountId: string,
+  status: ScanStatus,
+  error: string | null = null,
+): Promise<boolean> {
+  const { rowCount } = await pool.query(
+    `UPDATE twilio_accounts
+        SET scan_status = $3, scan_error = $4
+      WHERE id = $1 AND user_id = $2`,
+    [accountId, userId, status, status === "failed" ? error : null],
+  );
+  return (rowCount ?? 0) > 0;
+}
+
+/**
+ * Fetch a single account by id, scoped by user. Used by the rescan endpoint
+ * to confirm ownership before kicking off a background task.
+ */
+export async function getAccountForUser(
+  userId: string,
+  accountId: string,
+): Promise<AccountRow | null> {
+  const { rows } = await pool.query<AccountRow>(
+    `SELECT id, user_id, friendly_name, account_sid, auth_mode, is_subaccount, parent_account_id, created_at, last_used_at, scan_status, scan_error
+       FROM twilio_accounts
+      WHERE id = $1 AND user_id = $2`,
+    [accountId, userId],
+  );
+  return rows[0] ?? null;
 }

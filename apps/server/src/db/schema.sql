@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS twilio_accounts (
   tag BYTEA NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   last_used_at TIMESTAMPTZ,
+  scan_status TEXT NOT NULL DEFAULT 'pending' CHECK (scan_status IN ('pending', 'running', 'ready', 'failed')),
+  scan_error TEXT,
   UNIQUE (user_id, friendly_name)
 );
 CREATE INDEX IF NOT EXISTS twilio_accounts_user_idx ON twilio_accounts(user_id);
@@ -42,6 +44,14 @@ CREATE INDEX IF NOT EXISTS twilio_accounts_user_idx ON twilio_accounts(user_id);
 ALTER TABLE twilio_accounts
   ADD COLUMN IF NOT EXISTS auth_mode TEXT NOT NULL DEFAULT 'api_key'
   CHECK (auth_mode IN ('api_key', 'auth_token'));
+
+-- Phase 2 C1: async pre-scan status. pending → running → ready | failed.
+-- CHECK constraint only added on first creation; existing rows need an ADD CONSTRAINT.
+ALTER TABLE twilio_accounts
+  ADD COLUMN IF NOT EXISTS scan_status TEXT NOT NULL DEFAULT 'pending'
+  CHECK (scan_status IN ('pending', 'running', 'ready', 'failed'));
+ALTER TABLE twilio_accounts
+  ADD COLUMN IF NOT EXISTS scan_error TEXT;
 
 CREATE TABLE IF NOT EXISTS chat_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
