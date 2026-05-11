@@ -34,7 +34,7 @@ export function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-sm">
         <div className="flex items-center justify-center mb-6">
-          <img src="/twilio-logo.svg" alt="Twilio" className="h-10 w-auto" />
+          <img src="/twilio-wordmark.svg" alt="Twilio" className="h-10 w-auto" />
         </div>
         <form
           onSubmit={submit}
