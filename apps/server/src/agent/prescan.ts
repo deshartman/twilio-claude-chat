@@ -2,41 +2,17 @@ import { buildTwilioClient } from "./context.js";
 import { cachedTwilioCall } from "./cache/registry.js";
 import { setScanStatus } from "../accounts/repo.js";
 import { pool } from "../db/pool.js";
+import { runBounded, JobTimeoutError } from "../util/bounded.js";
 
 const PHONE_NUMBER_TTL_MS = 5 * 60 * 1000;
 const MESSAGING_SERVICE_TTL_MS = 5 * 60 * 1000;
+const PER_SERVICE_TIMEOUT_MS = 10_000;
 
 type Logger = {
   info: (obj: Record<string, unknown>, msg?: string) => void;
   warn: (obj: Record<string, unknown>, msg?: string) => void;
   error: (obj: Record<string, unknown>, msg?: string) => void;
 };
-
-/**
- * Run N jobs with at most `limit` in flight at once. Each job is a fn returning a promise.
- * Rejections are captured per-job so one failure doesn't tank the whole batch.
- * TODO(user): implement below.
- */
-async function runBounded<T>(
-  jobs: Array<() => Promise<T>>,
-  limit: number,
-): Promise<Array<{ ok: true; value: T } | { ok: false; error: unknown }>> {
-  // Placeholder — replaced by user contribution.
-  const results: Array<{ ok: true; value: T } | { ok: false; error: unknown }> = [];
-  let i = 0;
-  async function worker() {
-    while (i < jobs.length) {
-      const idx = i++;
-      try {
-        results[idx] = { ok: true, value: await jobs[idx]() };
-      } catch (error) {
-        results[idx] = { ok: false, error };
-      }
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, jobs.length) }, worker));
-  return results;
-}
 
 type PrescanSummary = {
   phone_numbers: number;
@@ -168,11 +144,22 @@ export async function runPrescan(
       );
     });
 
-    const results = await runBounded(serviceJobs, 10);
-    const failed = results.filter((r) => !r.ok).length;
-    if (failed > 0) {
+    const results = await runBounded(serviceJobs, 10, {
+      timeoutMs: PER_SERVICE_TIMEOUT_MS,
+    });
+    const failures = results.filter((r) => !r.ok);
+    const timedOut = failures.filter(
+      (r) => !r.ok && r.error instanceof JobTimeoutError,
+    ).length;
+    if (failures.length > 0) {
       log.warn(
-        { accountId, phase: "deep-partial", failed, total: results.length },
+        {
+          accountId,
+          phase: "deep-partial",
+          failed: failures.length,
+          timed_out: timedOut,
+          total: results.length,
+        },
         "prescan deep phase had failures",
       );
     }
@@ -182,8 +169,8 @@ export async function runPrescan(
     return {
       phone_numbers: phoneNumbers.length,
       messaging_services: messagingServices.length,
-      services_scanned: results.length - failed,
-      services_failed: failed,
+      services_scanned: results.length - failures.length,
+      services_failed: failures.length,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
