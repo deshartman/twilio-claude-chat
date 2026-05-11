@@ -28,13 +28,13 @@ const emptyForm: FormState = {
 function statusChipClass(s: ScanStatus): string {
   switch (s) {
     case "pending":
-      return "bg-slate-100 text-slate-600 border-slate-200";
+      return "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700";
     case "running":
-      return "bg-amber-50 text-amber-700 border-amber-200";
+      return "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-900/50";
     case "ready":
-      return "bg-emerald-50 text-emerald-700 border-emerald-200";
+      return "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-900/50";
     case "failed":
-      return "bg-red-50 text-red-700 border-red-200";
+      return "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-900/50";
   }
 }
 
@@ -131,27 +131,28 @@ export function AccountsPage() {
 
   const inputCls =
     "w-full border border-slate-300 rounded-md px-3 py-2 text-sm font-mono " +
-    "focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500";
+    "focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 " +
+    "dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100";
 
   return (
     <div className="p-8 max-w-3xl mx-auto space-y-8 overflow-auto h-full">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">Accounts</h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Accounts</h1>
+        <p className="text-sm text-slate-500 mt-1 dark:text-slate-400">
           Credentials are encrypted per row. Decryption happens only when an agent tool runs.
         </p>
       </div>
 
       <section>
-        <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-3">
+        <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-3 dark:text-slate-300">
           Configured
         </h2>
         {accounts.length === 0 ? (
-          <div className="text-sm text-slate-500 bg-white border border-slate-200 rounded-lg p-6 text-center">
+          <div className="text-sm text-slate-500 bg-white border border-slate-200 rounded-lg p-6 text-center dark:bg-slate-900 dark:border-slate-700 dark:text-slate-400">
             None yet. Add one below.
           </div>
         ) : (
-          <ul className="divide-y divide-slate-200 border border-slate-200 rounded-lg bg-white">
+          <ul className="divide-y divide-slate-200 border border-slate-200 rounded-lg bg-white dark:divide-slate-700 dark:border-slate-700 dark:bg-slate-900">
             {accounts.map((a) => {
               const isScanning =
                 a.scan_status === "pending" || a.scan_status === "running" || rescanning.has(a.id);
@@ -159,15 +160,15 @@ export function AccountsPage() {
                 <li key={a.id} className="flex items-center justify-between px-4 py-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-slate-900 truncate">{a.friendly_name}</span>
+                      <span className="font-medium text-slate-900 truncate dark:text-slate-100">{a.friendly_name}</span>
                       <StatusChip account={a} />
                     </div>
-                    <div className="text-xs text-slate-500 font-mono mt-0.5 truncate">
+                    <div className="text-xs text-slate-500 font-mono mt-0.5 truncate dark:text-slate-400">
                       {a.account_sid} · {a.auth_mode === "auth_token" ? "auth token" : "API key"}
                       {a.is_subaccount && " · subaccount"}
                     </div>
                     {a.scan_status === "failed" && a.scan_error && (
-                      <div className="text-xs text-red-700 mt-1">{a.scan_error}</div>
+                      <div className="text-xs text-red-700 mt-1 dark:text-red-400">{a.scan_error}</div>
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -198,15 +199,15 @@ export function AccountsPage() {
       </section>
 
       <section>
-        <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-3">
+        <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-3 dark:text-slate-300">
           Add account
         </h2>
         <form
           onSubmit={submit}
-          className="bg-white p-5 rounded-lg border border-slate-200 space-y-4"
+          className="bg-white p-5 rounded-lg border border-slate-200 space-y-4 dark:bg-slate-900 dark:border-slate-700"
         >
           <label className="block">
-            <span className="text-sm text-slate-700">Friendly name</span>
+            <span className="text-sm text-slate-700 dark:text-slate-300">Friendly name</span>
             <input
               className={inputCls}
               value={form.friendly_name}
@@ -215,7 +216,7 @@ export function AccountsPage() {
             />
           </label>
           <label className="block">
-            <span className="text-sm text-slate-700">Account SID (AC…)</span>
+            <span className="text-sm text-slate-700 dark:text-slate-300">Account SID (AC…)</span>
             <input
               className={inputCls}
               value={form.account_sid}
@@ -224,11 +225,11 @@ export function AccountsPage() {
               required
             />
           </label>
-          <fieldset className="border border-slate-200 rounded-md p-3 space-y-2">
-            <legend className="text-xs font-semibold uppercase tracking-wide text-slate-600 px-1.5">
+          <fieldset className="border border-slate-200 rounded-md p-3 space-y-2 dark:border-slate-700">
+            <legend className="text-xs font-semibold uppercase tracking-wide text-slate-600 px-1.5 dark:text-slate-400">
               Authentication
             </legend>
-            <label className="flex items-center gap-2 text-sm text-slate-700">
+            <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
               <input
                 type="radio"
                 name="auth_mode"
@@ -238,10 +239,10 @@ export function AccountsPage() {
               />
               <span>
                 API Key (SK… + secret) —{" "}
-                <span className="text-slate-500">recommended</span>
+                <span className="text-slate-500 dark:text-slate-400">recommended</span>
               </span>
             </label>
-            <label className="flex items-center gap-2 text-sm text-slate-700">
+            <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
               <input
                 type="radio"
                 name="auth_mode"
@@ -255,7 +256,7 @@ export function AccountsPage() {
           {form.auth_mode === "api_key" ? (
             <>
               <label className="block">
-                <span className="text-sm text-slate-700">API Key SID (SK…)</span>
+                <span className="text-sm text-slate-700 dark:text-slate-300">API Key SID (SK…)</span>
                 <input
                   className={inputCls}
                   value={form.api_key_sid}
@@ -265,7 +266,7 @@ export function AccountsPage() {
                 />
               </label>
               <label className="block">
-                <span className="text-sm text-slate-700">API Key Secret</span>
+                <span className="text-sm text-slate-700 dark:text-slate-300">API Key Secret</span>
                 <input
                   type="password"
                   className={inputCls}
@@ -278,7 +279,7 @@ export function AccountsPage() {
             </>
           ) : (
             <label className="block">
-              <span className="text-sm text-slate-700">Auth Token (32 hex chars)</span>
+              <span className="text-sm text-slate-700 dark:text-slate-300">Auth Token (32 hex chars)</span>
               <input
                 type="password"
                 className={inputCls}
@@ -289,7 +290,7 @@ export function AccountsPage() {
               />
             </label>
           )}
-          <label className="flex items-center gap-2 text-sm text-slate-700">
+          <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
             <input
               type="checkbox"
               className="accent-red-600"
@@ -299,7 +300,7 @@ export function AccountsPage() {
             This is a subaccount
           </label>
           {err && (
-            <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1.5">
+            <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1.5 dark:bg-red-900/30 dark:border-red-900/50 dark:text-red-300">
               {err}
             </p>
           )}

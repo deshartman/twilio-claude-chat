@@ -18,8 +18,8 @@ export function ArtifactPane({ toolName, text }: { toolName: string | null; text
 
   if (!text) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-slate-400 text-sm gap-1">
-        <span className="text-slate-600 font-medium">Tool results</span>
+      <div className="h-full flex flex-col items-center justify-center text-slate-400 text-sm gap-1 dark:text-slate-500">
+        <span className="text-slate-600 font-medium dark:text-slate-300">Tool results</span>
         <span className="text-xs">will appear here as the agent runs tools.</span>
       </div>
     );
@@ -58,17 +58,17 @@ function PhoneNumbersTable({ data }: { data: PhoneNumbersResult }) {
   return (
     <div className="p-5 space-y-4 overflow-auto h-full">
       <div className="flex items-baseline justify-between">
-        <div className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
+        <div className="text-xs uppercase tracking-wide text-slate-500 font-semibold dark:text-slate-400">
           Phone numbers
         </div>
-        <div className="text-sm text-slate-600">
-          <span className="font-semibold text-slate-900">{data.count}</span> in{" "}
-          <span className="font-medium text-slate-900">{data.account.friendly_name}</span>
+        <div className="text-sm text-slate-600 dark:text-slate-300">
+          <span className="font-semibold text-slate-900 dark:text-slate-100">{data.count}</span> in{" "}
+          <span className="font-medium text-slate-900 dark:text-slate-100">{data.account.friendly_name}</span>
         </div>
       </div>
-      <div className="border border-slate-200 rounded-lg bg-white overflow-hidden">
+      <div className="border border-slate-200 rounded-lg bg-white overflow-hidden dark:border-slate-700 dark:bg-slate-900">
         <table className="w-full text-sm border-collapse">
-          <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">
+          <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600 dark:bg-slate-800/50 dark:text-slate-400">
             <tr>
               <th className="px-3 py-2 font-semibold">Number</th>
               <th className="px-3 py-2 font-semibold">Friendly name</th>
@@ -79,16 +79,16 @@ function PhoneNumbersTable({ data }: { data: PhoneNumbersResult }) {
           </thead>
           <tbody>
             {data.numbers.map((n) => (
-              <tr key={n.sid} className="border-t border-slate-200 hover:bg-slate-50">
-                <td className="px-3 py-2 font-mono text-slate-900">{n.phone_number}</td>
-                <td className="px-3 py-2 text-slate-700">{n.friendly_name}</td>
-                <td className="px-3 py-2 font-mono text-xs text-slate-600 truncate max-w-[16ch]">
+              <tr key={n.sid} className="border-t border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
+                <td className="px-3 py-2 font-mono text-slate-900 dark:text-slate-100">{n.phone_number}</td>
+                <td className="px-3 py-2 text-slate-700 dark:text-slate-300">{n.friendly_name}</td>
+                <td className="px-3 py-2 font-mono text-xs text-slate-600 truncate max-w-[16ch] dark:text-slate-400">
                   {n.voice_url ?? "—"}
                 </td>
-                <td className="px-3 py-2 font-mono text-xs text-slate-600 truncate max-w-[16ch]">
+                <td className="px-3 py-2 font-mono text-xs text-slate-600 truncate max-w-[16ch] dark:text-slate-400">
                   {n.sms_url ?? "—"}
                 </td>
-                <td className="px-3 py-2 text-xs text-slate-600">
+                <td className="px-3 py-2 text-xs text-slate-600 dark:text-slate-400">
                   {Object.entries(n.capabilities)
                     .filter(([, v]) => v)
                     .map(([k]) => k)
@@ -105,7 +105,7 @@ function PhoneNumbersTable({ data }: { data: PhoneNumbersResult }) {
 
 function PrettyJson({ value }: { value: unknown }) {
   return (
-    <pre className="p-5 text-xs font-mono text-slate-800 whitespace-pre-wrap break-all overflow-auto h-full bg-slate-50">
+    <pre className="p-5 text-xs font-mono text-slate-800 whitespace-pre-wrap break-all overflow-auto h-full bg-slate-50 dark:bg-slate-950 dark:text-slate-300">
       {typeof value === "string" ? value : JSON.stringify(value, null, 2)}
     </pre>
   );

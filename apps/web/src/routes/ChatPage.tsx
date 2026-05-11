@@ -112,13 +112,13 @@ export function ChatPage() {
     >
       <div className="flex flex-col min-h-0 h-full">
         {activeAccount || accounts.length > 1 ? (
-          <div className="px-5 py-2.5 border-b border-slate-200 bg-white text-sm flex items-center gap-2 shrink-0">
-            <span className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
+          <div className="px-5 py-2.5 border-b border-slate-200 bg-white text-sm flex items-center gap-2 shrink-0 dark:border-slate-700 dark:bg-slate-900">
+            <span className="text-xs uppercase tracking-wide text-slate-500 font-semibold dark:text-slate-400">
               Scope
             </span>
             {accounts.length > 1 ? (
               <select
-                className="border border-slate-300 rounded-md px-2 py-1 text-sm bg-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                className="border border-slate-300 rounded-md px-2 py-1 text-sm bg-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
                 value={activeAccount?.id ?? ""}
                 onChange={(e) => setActiveAccountId(e.target.value || null)}
               >
@@ -129,12 +129,12 @@ export function ChatPage() {
                 ))}
               </select>
             ) : (
-              <span className="font-medium text-slate-900">{activeAccount?.friendly_name}</span>
+              <span className="font-medium text-slate-900 dark:text-slate-100">{activeAccount?.friendly_name}</span>
             )}
-            <span className="ml-auto flex items-center gap-1.5 text-xs text-slate-500">
+            <span className="ml-auto flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
               <span
                 className={`inline-block w-1.5 h-1.5 rounded-full ${
-                  chat.wsReady ? "bg-emerald-500" : "bg-slate-300"
+                  chat.wsReady ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-600"
                 }`}
               />
               {chat.wsReady ? "connected" : "connecting…"}
@@ -149,11 +149,11 @@ export function ChatPage() {
         onPointerMove={onHandleMove}
         onPointerUp={onHandleUp}
         onPointerCancel={onHandleUp}
-        className="cursor-col-resize bg-slate-200 hover:bg-red-300 transition-colors"
+        className="cursor-col-resize bg-slate-200 hover:bg-red-300 transition-colors dark:bg-slate-700 dark:hover:bg-red-500"
         title="Drag to resize"
       />
 
-      <div className="bg-slate-50 overflow-hidden min-w-0">
+      <div className="bg-slate-50 overflow-hidden min-w-0 dark:bg-slate-950">
         <ArtifactPane
           toolName={chat.artifact?.tool_name ?? null}
           text={chat.artifact?.text ?? null}

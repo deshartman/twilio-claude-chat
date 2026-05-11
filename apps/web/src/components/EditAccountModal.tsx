@@ -60,22 +60,23 @@ export function EditAccountModal({ account, onClose, onSaved }: Props) {
 
   const inputCls =
     "w-full border border-slate-300 rounded-md px-3 py-2 text-sm font-mono " +
-    "focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500";
+    "focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 " +
+    "dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100";
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 backdrop-blur-sm">
+    <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 backdrop-blur-sm dark:bg-slate-950/70">
       <form
         onSubmit={submit}
-        className="bg-white rounded-lg shadow-2xl border border-slate-200 w-[520px] max-w-[95vw] overflow-hidden"
+        className="bg-white rounded-lg shadow-2xl border border-slate-200 w-[520px] max-w-[95vw] overflow-hidden dark:bg-slate-900 dark:border-slate-700"
       >
-        <div className="px-5 pt-5 pb-4 border-b border-slate-200">
-          <h2 className="text-base font-semibold text-slate-900">Edit account</h2>
-          <p className="text-sm text-slate-500 mt-0.5 font-mono">{account.account_sid}</p>
+        <div className="px-5 pt-5 pb-4 border-b border-slate-200 dark:border-slate-700">
+          <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">Edit account</h2>
+          <p className="text-sm text-slate-500 mt-0.5 font-mono dark:text-slate-400">{account.account_sid}</p>
         </div>
 
         <div className="px-5 py-4 space-y-4">
           <label className="block">
-            <span className="text-sm text-slate-700">Friendly name</span>
+            <span className="text-sm text-slate-700 dark:text-slate-300">Friendly name</span>
             <input
               className={inputCls}
               value={friendlyName}
@@ -84,7 +85,7 @@ export function EditAccountModal({ account, onClose, onSaved }: Props) {
             />
           </label>
 
-          <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+          <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer dark:text-slate-300">
             <input
               type="checkbox"
               className="accent-red-600"
@@ -95,12 +96,12 @@ export function EditAccountModal({ account, onClose, onSaved }: Props) {
           </label>
 
           {rotateCreds && (
-            <div className="space-y-3 border border-slate-200 rounded-md p-3">
+            <div className="space-y-3 border border-slate-200 rounded-md p-3 dark:border-slate-700">
               <fieldset className="space-y-2">
-                <legend className="text-xs font-semibold uppercase tracking-wide text-slate-600 px-0.5">
+                <legend className="text-xs font-semibold uppercase tracking-wide text-slate-600 px-0.5 dark:text-slate-400">
                   New authentication
                 </legend>
-                <label className="flex items-center gap-2 text-sm text-slate-700">
+                <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
                   <input
                     type="radio"
                     name="edit_auth_mode"
@@ -110,7 +111,7 @@ export function EditAccountModal({ account, onClose, onSaved }: Props) {
                   />
                   <span>API Key (SK… + secret)</span>
                 </label>
-                <label className="flex items-center gap-2 text-sm text-slate-700">
+                <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
                   <input
                     type="radio"
                     name="edit_auth_mode"
@@ -125,7 +126,7 @@ export function EditAccountModal({ account, onClose, onSaved }: Props) {
               {authMode === "api_key" ? (
                 <>
                   <label className="block">
-                    <span className="text-sm text-slate-700">API Key SID (SK…)</span>
+                    <span className="text-sm text-slate-700 dark:text-slate-300">API Key SID (SK…)</span>
                     <input
                       className={inputCls}
                       value={apiKeySid}
@@ -135,7 +136,7 @@ export function EditAccountModal({ account, onClose, onSaved }: Props) {
                     />
                   </label>
                   <label className="block">
-                    <span className="text-sm text-slate-700">API Key Secret</span>
+                    <span className="text-sm text-slate-700 dark:text-slate-300">API Key Secret</span>
                     <input
                       type="password"
                       className={inputCls}
@@ -148,7 +149,7 @@ export function EditAccountModal({ account, onClose, onSaved }: Props) {
                 </>
               ) : (
                 <label className="block">
-                  <span className="text-sm text-slate-700">Auth Token (32 hex chars)</span>
+                  <span className="text-sm text-slate-700 dark:text-slate-300">Auth Token (32 hex chars)</span>
                   <input
                     type="password"
                     className={inputCls}
@@ -163,13 +164,13 @@ export function EditAccountModal({ account, onClose, onSaved }: Props) {
           )}
 
           {err && (
-            <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1.5">
+            <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1.5 dark:bg-red-900/30 dark:border-red-900/50 dark:text-red-300">
               {err}
             </p>
           )}
         </div>
 
-        <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
+        <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex justify-end gap-2 dark:bg-slate-800/50 dark:border-slate-700">
           <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>
             Cancel
           </Button>

@@ -58,7 +58,7 @@ export function App() {
   }, [chat.currentSessionId, chat.messages.length]);
 
   if (loading) {
-    return <div className="p-8 text-slate-500">Loading…</div>;
+    return <div className="p-8 text-slate-500 dark:text-slate-400">Loading…</div>;
   }
   if (!me) return null;
 
@@ -78,7 +78,7 @@ export function App() {
   }
 
   return (
-    <div className="h-screen flex bg-slate-50 overflow-hidden">
+    <div className="h-screen flex bg-slate-50 overflow-hidden dark:bg-slate-950">
       <SessionsSidebar
         me={me}
         currentSessionId={chat.currentSessionId}
