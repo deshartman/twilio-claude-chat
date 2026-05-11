@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { AccountPublic } from "../lib/api.ts";
 import type { ChatMessage, ChatSession } from "../lib/useChatSession.ts";
 import { ConfirmModal } from "./ConfirmModal.tsx";
@@ -16,11 +16,45 @@ export function ChatPane({
   const [input, setInput] = useState("");
   const { messages, busy, wsReady, confirmReq, sendUserMessage, decideConfirm } = chat;
 
+  // ↑/↓ history cycling. `cursor === null` means "on the live draft"; any
+  // number i points at userMessages[userMessages.length - 1 - i] (i=0 is newest).
+  // The current draft is stashed when we first press ↑ so ↓ past newest restores it.
+  const [cursor, setCursor] = useState<number | null>(null);
+  const draftSnapshot = useRef<string>("");
+  const userMessages = useMemo(
+    () => messages.filter((m): m is Extract<ChatMessage, { kind: "user" }> => m.kind === "user"),
+    [messages],
+  );
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (userMessages.length === 0) return;
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (cursor === null) draftSnapshot.current = input;
+      const next = cursor === null ? 0 : Math.min(cursor + 1, userMessages.length - 1);
+      setCursor(next);
+      setInput(userMessages[userMessages.length - 1 - next].text);
+    } else if (e.key === "ArrowDown") {
+      if (cursor === null) return; // already on the live draft — let default handler run
+      e.preventDefault();
+      if (cursor === 0) {
+        setCursor(null);
+        setInput(draftSnapshot.current);
+      } else {
+        const next = cursor - 1;
+        setCursor(next);
+        setInput(userMessages[userMessages.length - 1 - next].text);
+      }
+    }
+  }
+
   function send(e: React.FormEvent) {
     e.preventDefault();
     const prompt = input.trim();
     if (!prompt || busy || !wsReady) return;
     setInput("");
+    setCursor(null);
+    draftSnapshot.current = "";
     sendUserMessage(prompt, activeAccountId);
   }
 
@@ -43,7 +77,13 @@ export function ChatPane({
         <input
           className="flex-1 border border-slate-300 rounded-md px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => {
+            setInput(e.target.value);
+            // Typing means you're editing — leave history-cursor mode so ↓
+            // doesn't overwrite your edit with a recalled message.
+            if (cursor !== null) setCursor(null);
+          }}
+          onKeyDown={onKeyDown}
           placeholder={busy ? "thinking…" : wsReady ? "Type a message" : "connecting…"}
           disabled={busy || !wsReady}
         />
