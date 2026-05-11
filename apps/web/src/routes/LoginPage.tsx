@@ -33,13 +33,8 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-sm">
-        <div className="flex items-center gap-2 justify-center mb-6">
-          <span className="inline-flex items-center justify-center w-7 h-7 rounded bg-red-600 text-white text-sm font-bold leading-none">
-            T
-          </span>
-          <span className="font-semibold text-slate-900 tracking-tight text-lg">
-            Twilio Chat
-          </span>
+        <div className="flex items-center justify-center mb-6">
+          <img src="/twilio-logo.svg" alt="Twilio" className="h-10 w-auto" />
         </div>
         <form
           onSubmit={submit}

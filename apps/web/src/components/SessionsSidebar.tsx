@@ -88,11 +88,8 @@ export function SessionsSidebar({
   return (
     <aside className="flex flex-col h-full min-h-0 border-r border-slate-200 bg-white w-60 shrink-0">
       {/* Brand */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200">
-        <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-red-600 text-white text-xs font-bold leading-none">
-          T
-        </span>
-        <span className="font-semibold text-slate-900 tracking-tight">Twilio Chat</span>
+      <div className="flex items-center px-4 py-3 border-b border-slate-200">
+        <img src="/twilio-logo.svg" alt="Twilio" className="h-7 w-auto" />
       </div>
 
       {/* Primary actions + nav */}
