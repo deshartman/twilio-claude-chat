@@ -9,6 +9,7 @@
     "dev:web": "pnpm --filter web dev",
     "build": "pnpm --filter './apps/*' build",
     "typecheck": "pnpm --recursive typecheck",
+    "test": "pnpm --recursive test",
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f postgres",
