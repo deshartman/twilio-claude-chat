@@ -44,7 +44,9 @@ Open **http://localhost:5173/**. Sign up for a local account, add a Twilio accou
 | `DATABASE_URL` | ✅ | Postgres connection string. Default `postgres://twilio_chat:devpassword@localhost:5433/twilio_chat` matches `docker-compose.yml`. |
 | `PORT` | | Fastify port. Default `3001`. |
 | `WEB_ORIGIN` | | CORS origin for the web app. Default `http://localhost:5173`. |
-| `APP_SECRET_KEY` | ✅ | 32 bytes base64. AES-256-GCM data-key used to seal per-row Twilio credentials. **Rotating this invalidates every stored credential.** |
+| `APP_SECRET_KEY` | ✅ | 32 bytes base64. AES-256-GCM data-key used to seal per-row Twilio credentials. Treated as version 1. Rotatable — see *Rotating APP_SECRET_KEY* below. |
+| `APP_SECRET_KEY_V{N}` | | Explicit key slot for version N. During rotation, you run with multiple versions loaded simultaneously. |
+| `APP_SECRET_KEY_CURRENT` | | Which key version `seal()` uses for NEW rows. Defaults to the highest loaded version. |
 | `SESSION_SECRET` | ✅ | 32 bytes base64. Fastify cookie signing secret. Distinct from `APP_SECRET_KEY`. |
 | `CLAUDE_CODE_USE_BEDROCK` | ✅ | Set to `1` to route the Agent SDK through Bedrock. |
 | `AWS_REGION` | ✅ | The region where Opus 4.7 is enabled for your AWS account (e.g. `us-west-2`). |
@@ -99,6 +101,38 @@ A chat turn flows as:
 5. Each completed tool call writes a row to `audit_log`.
 
 See [CLAUDE.md](CLAUDE.md) for deeper architectural notes (credential sealing, cache invalidation, layout pitfalls).
+
+## Rotating `APP_SECRET_KEY`
+
+Each stored Twilio credential is sealed with a specific key version, recorded in `twilio_accounts.key_version`. You can rotate without invalidating existing rows by running old + new keys in parallel, re-sealing, then dropping the old one.
+
+```bash
+# 1. Generate a new key.
+NEW=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64'))")
+
+# 2. Set both keys in .env and .env (apps/server/.env), marking the new one as current:
+#    APP_SECRET_KEY_V1=<your existing key, same bytes as APP_SECRET_KEY was>
+#    APP_SECRET_KEY_V2=<the new key you just generated>
+#    APP_SECRET_KEY_CURRENT=2
+#    (Remove or comment out the unsuffixed APP_SECRET_KEY if present.)
+
+# 3. Restart the server so it re-reads env. Existing rows still decrypt (V1 still
+#    loaded). New rows seal under V2.
+
+# 4. Walk every row and re-seal under V2. Idempotent; safe to re-run.
+pnpm rotate-keys
+
+# 5. Once output reports failed=0, every row is on V2. You can now remove
+#    APP_SECRET_KEY_V1 from env on the next restart.
+```
+
+If you skip step 2 and just swap the env var, old rows become unreadable — that's what versioning prevents.
+
+## Editing a Twilio account (key changed upstream)
+
+If a user rotates their Twilio API key in the Twilio console, open **Accounts → Edit** on that row and tick *Rotate credentials*. The new secret is sealed immediately under the current key version. The account's internal UUID stays the same, so existing audit-log rows and cached data still point at the right account. You can also rename here, or switch from API Key → Auth Token in place.
+
+`account_sid` is deliberately not editable — that's a different Twilio account; delete + re-add is the right flow for that.
 
 ## Credentials & security
 

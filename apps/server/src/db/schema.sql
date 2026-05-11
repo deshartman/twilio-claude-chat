@@ -33,6 +33,10 @@ CREATE TABLE IF NOT EXISTS twilio_accounts (
   credentials_ct BYTEA NOT NULL,
   iv BYTEA NOT NULL,
   tag BYTEA NOT NULL,
+  -- Key version that sealed this row. Looked up against the APP_SECRET_KEY_V{N}
+  -- env registry at decrypt time. Lets you rotate APP_SECRET_KEY without
+  -- invalidating existing rows — rotate-keys CLI re-seals them.
+  key_version INT NOT NULL DEFAULT 1,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   last_used_at TIMESTAMPTZ,
   scan_status TEXT NOT NULL DEFAULT 'pending' CHECK (scan_status IN ('pending', 'running', 'ready', 'failed')),
@@ -52,6 +56,10 @@ ALTER TABLE twilio_accounts
   CHECK (scan_status IN ('pending', 'running', 'ready', 'failed'));
 ALTER TABLE twilio_accounts
   ADD COLUMN IF NOT EXISTS scan_error TEXT;
+
+-- Post-Phase-2: key_version for rotatable APP_SECRET_KEY. Existing rows default to 1.
+ALTER TABLE twilio_accounts
+  ADD COLUMN IF NOT EXISTS key_version INT NOT NULL DEFAULT 1;
 
 CREATE TABLE IF NOT EXISTS chat_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

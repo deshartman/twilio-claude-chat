@@ -3,6 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { api, type AccountPublic, type AuthMode, type NewAccountInput, type ScanStatus } from "../lib/api.ts";
 import type { AppContext } from "../App.tsx";
 import { Button } from "../components/ui/Button.tsx";
+import { EditAccountModal } from "../components/EditAccountModal.tsx";
 
 type FormState = {
   friendly_name: string;
@@ -59,6 +60,7 @@ export function AccountsPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [busy, setBusy] = useState(false);
   const [rescanning, setRescanning] = useState<Set<string>>(new Set());
+  const [editing, setEditing] = useState<AccountPublic | null>(null);
 
   // Poll while any account is mid-scan. 2s cadence is quick enough to feel
   // responsive without hammering the API for the common idle case.
@@ -169,6 +171,13 @@ export function AccountsPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setEditing(a)}
+                    >
+                      Edit
+                    </Button>
                     <Button
                       variant="secondary"
                       size="sm"
@@ -301,6 +310,14 @@ export function AccountsPage() {
           </div>
         </form>
       </section>
+
+      {editing && (
+        <EditAccountModal
+          account={editing}
+          onClose={() => setEditing(null)}
+          onSaved={refreshAccounts}
+        />
+      )}
     </div>
   );
 }

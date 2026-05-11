@@ -40,6 +40,11 @@ export const api = {
     }),
   deleteAccount: (id: string) =>
     jsonReq<{ ok: true }>(`/api/accounts/${id}`, { method: "DELETE" }),
+  updateAccount: (id: string, patch: UpdateAccountInput) =>
+    jsonReq<{ account: AccountPublic }>(`/api/accounts/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
   rescanAccount: (id: string) =>
     jsonReq<{ ok: true; scan_status: ScanStatus }>(`/api/accounts/${id}/rescan`, {
       method: "POST",
@@ -97,6 +102,13 @@ export type NewAccountInput = {
   | { auth_mode: "api_key"; api_key_sid: string; api_key_secret: string }
   | { auth_mode: "auth_token"; auth_token: string }
 );
+
+export type UpdateAccountInput = {
+  friendly_name?: string;
+  credentials?:
+    | { auth_mode: "api_key"; api_key_sid: string; api_key_secret: string }
+    | { auth_mode: "auth_token"; auth_token: string };
+};
 
 export type TurnRequest = {
   chat_session_id: string | null;

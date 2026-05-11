@@ -13,7 +13,8 @@
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f postgres",
-    "db:migrate": "pnpm --filter server migrate"
+    "db:migrate": "pnpm --filter server migrate",
+    "rotate-keys": "pnpm --filter server rotate-keys"
   },
   "pnpm": {
     "onlyBuiltDependencies": ["argon2", "esbuild"]

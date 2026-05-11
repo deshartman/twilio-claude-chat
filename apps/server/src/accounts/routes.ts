@@ -7,6 +7,7 @@ import {
   getAccountForUser,
   listAccountsForUser,
   setScanStatus,
+  updateAccount,
 } from "./repo.js";
 import type { AccountRow } from "./repo.js";
 import { rescanAccount, runPrescan } from "../agent/prescan.js";
@@ -17,6 +18,27 @@ const commonAccountFields = {
   is_subaccount: z.boolean().optional(),
   parent_account_id: z.string().uuid().optional(),
 };
+
+const updateAccountSchema = z
+  .object({
+    friendly_name: z.string().min(1).max(80).optional(),
+    credentials: z
+      .discriminatedUnion("auth_mode", [
+        z.object({
+          auth_mode: z.literal("api_key"),
+          api_key_sid: z.string().regex(/^SK[0-9a-f]{32}$/i, "must start with SK then 32 hex chars"),
+          api_key_secret: z.string().min(16).max(128),
+        }),
+        z.object({
+          auth_mode: z.literal("auth_token"),
+          auth_token: z.string().regex(/^[0-9a-f]{32}$/i, "auth token must be 32 hex chars"),
+        }),
+      ])
+      .optional(),
+  })
+  .refine((v) => v.friendly_name !== undefined || v.credentials !== undefined, {
+    message: "Provide at least one of friendly_name or credentials",
+  });
 
 const newAccountSchema = z.discriminatedUnion("auth_mode", [
   z.object({
@@ -68,6 +90,31 @@ export async function accountRoutes(app: FastifyInstance) {
       void runPrescan(user.id, row.id, app.log).catch((err) => {
         app.log.error({ err: err instanceof Error ? err.message : String(err), accountId: row.id }, "prescan unhandled");
       });
+      return reply.send({ account: publicShape(row) });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("twilio_accounts_user_id_friendly_name_key")) {
+        return reply.code(409).send({ error: "friendly_name_taken" });
+      }
+      throw err;
+    }
+  });
+
+  app.patch("/api/accounts/:id", async (req, reply) => {
+    const user = await requireUser(req, reply);
+    const { id } = req.params as { id: string };
+    const parsed = updateAccountSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "invalid_patch", issues: parsed.error.issues });
+    }
+    try {
+      const row = await updateAccount({
+        user_id: user.id,
+        account_id: id,
+        friendly_name: parsed.data.friendly_name,
+        credentials: parsed.data.credentials,
+      });
+      if (!row) return reply.code(404).send({ error: "not_found" });
       return reply.send({ account: publicShape(row) });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
