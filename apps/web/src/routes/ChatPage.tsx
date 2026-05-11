@@ -111,29 +111,34 @@ export function ChatPage() {
       style={gridStyle}
     >
       <div className="flex flex-col min-h-0 h-full">
-        {accounts.length > 1 ? (
+        {activeAccount || accounts.length > 1 ? (
           <div className="px-5 py-2.5 border-b border-slate-200 bg-white text-sm flex items-center gap-2 shrink-0">
             <span className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
               Scope
             </span>
-            <select
-              className="border border-slate-300 rounded-md px-2 py-1 text-sm bg-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
-              value={activeAccount?.id ?? ""}
-              onChange={(e) => setActiveAccountId(e.target.value || null)}
-            >
-              {sortedAccounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.friendly_name}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : activeAccount ? (
-          <div className="px-5 py-2.5 border-b border-slate-200 bg-white text-sm flex items-center gap-2 shrink-0">
-            <span className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
-              Scope
+            {accounts.length > 1 ? (
+              <select
+                className="border border-slate-300 rounded-md px-2 py-1 text-sm bg-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                value={activeAccount?.id ?? ""}
+                onChange={(e) => setActiveAccountId(e.target.value || null)}
+              >
+                {sortedAccounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.friendly_name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="font-medium text-slate-900">{activeAccount?.friendly_name}</span>
+            )}
+            <span className="ml-auto flex items-center gap-1.5 text-xs text-slate-500">
+              <span
+                className={`inline-block w-1.5 h-1.5 rounded-full ${
+                  chat.wsReady ? "bg-emerald-500" : "bg-slate-300"
+                }`}
+              />
+              {chat.wsReady ? "connected" : "connecting…"}
             </span>
-            <span className="font-medium text-slate-900">{activeAccount.friendly_name}</span>
           </div>
         ) : null}
         <ChatPane accounts={accounts} activeAccountId={activeAccount?.id ?? null} chat={chat} />

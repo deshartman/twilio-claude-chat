@@ -95,18 +95,15 @@ export function SessionsSidebar({
         <span className="font-semibold text-slate-900 tracking-tight">Twilio Chat</span>
       </div>
 
-      {/* New chat */}
-      <div className="px-3 py-3">
+      {/* Primary actions + nav */}
+      <nav className="px-2 py-2 flex flex-col gap-0.5">
         <button
           onClick={handleNewSession}
-          className="w-full text-sm font-medium border border-slate-300 rounded-md px-3 py-1.5 text-slate-700 bg-white hover:bg-slate-50 hover:border-slate-400 transition-colors"
+          className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-700 rounded-md hover:bg-slate-50 transition-colors text-left"
         >
-          + New chat
+          <span className="text-slate-400 text-base leading-none">+</span>
+          <span>New chat</span>
         </button>
-      </div>
-
-      {/* Nav */}
-      <nav className="px-2 pb-2 flex flex-col gap-0.5">
         <Link to="/chat" className={navCls(onChat)}>
           {onChat && (
             <span className="absolute left-0 top-1 bottom-1 w-0.5 rounded-r bg-red-600" />

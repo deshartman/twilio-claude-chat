@@ -5,7 +5,7 @@ import { ConfirmModal } from "./ConfirmModal.tsx";
 import { Button } from "./ui/Button.tsx";
 
 export function ChatPane({
-  accounts,
+  accounts: _accounts,
   activeAccountId,
   chat,
 }: {
@@ -24,25 +24,8 @@ export function ChatPane({
     sendUserMessage(prompt, activeAccountId);
   }
 
-  const activeName =
-    accounts.find((a) => a.id === activeAccountId)?.friendly_name ?? "— (auto)";
-
   return (
     <div className="min-h-0 h-full flex flex-col bg-white">
-      <header className="px-5 py-3 border-b border-slate-200 flex items-center gap-3 text-sm shrink-0">
-        <span className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
-          Active
-        </span>
-        <span className="font-medium text-slate-900">{activeName}</span>
-        <span className="ml-auto flex items-center gap-1.5 text-xs text-slate-500">
-          <span
-            className={`inline-block w-1.5 h-1.5 rounded-full ${
-              wsReady ? "bg-emerald-500" : "bg-slate-300"
-            }`}
-          />
-          {wsReady ? "connected" : "connecting…"}
-        </span>
-      </header>
       <div className="flex-1 min-h-0 overflow-auto px-6 py-5 space-y-4">
         {messages.length === 0 && (
           <div className="max-w-md mx-auto text-center pt-16">
