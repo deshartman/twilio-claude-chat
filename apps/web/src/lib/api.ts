@@ -1,10 +1,15 @@
 export type Me = { id: string; email: string };
 
 async function jsonReq<T>(path: string, init?: RequestInit): Promise<T> {
+  // Only advertise application/json when there's actually a body — Fastify's
+  // default parser rejects empty bodies with that content-type (400 EMPTY_JSON_BODY).
+  const baseHeaders: Record<string, string> = init?.body
+    ? { "Content-Type": "application/json" }
+    : {};
   const res = await fetch(path, {
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     ...init,
+    headers: { ...baseHeaders, ...(init?.headers ?? {}) },
   });
   if (!res.ok) {
     const body = await res.text();
