@@ -1,55 +1,154 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { ChatPane } from "../components/ChatPane.tsx";
 import { ArtifactPane } from "../components/ArtifactPane.tsx";
-import { SessionsSidebar } from "../components/SessionsSidebar.tsx";
 import type { AppContext } from "../App.tsx";
+import type { AccountPublic } from "../lib/api.ts";
+
+const ARTIFACT_WIDTH_KEY = "artifactWidth";
+const DEFAULT_ARTIFACT_WIDTH = 560;
+const MIN_ARTIFACT_WIDTH = 320;
+const CHAT_MIN_WIDTH = 380;
+const HANDLE_WIDTH = 6;
+
+/**
+ * Clamp artifactWidth so the chat column never drops below its min and the
+ * artifact column stays at least MIN_ARTIFACT_WIDTH. The sidebar width is
+ * read off the actual DOM via the containing grid's width — we only see the
+ * <main> width here, so the math is: mainWidth - handle - chatMin >= artifact.
+ */
+function clampArtifactWidth(w: number, mainWidth: number): number {
+  const upper = Math.max(MIN_ARTIFACT_WIDTH, mainWidth - CHAT_MIN_WIDTH - HANDLE_WIDTH);
+  return Math.max(MIN_ARTIFACT_WIDTH, Math.min(w, upper));
+}
+
+function loadInitialWidth(): number {
+  const raw = localStorage.getItem(ARTIFACT_WIDTH_KEY);
+  const n = raw ? Number(raw) : DEFAULT_ARTIFACT_WIDTH;
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_ARTIFACT_WIDTH;
+}
+
+/**
+ * Sort accounts for the scope dropdown: last_used_at desc, null rows at the
+ * bottom sorted alphabetically by friendly_name.
+ */
+function sortAccountsByLastUsed(accounts: AccountPublic[]): AccountPublic[] {
+  return [...accounts].sort((a, b) => {
+    const la = a.last_used_at;
+    const lb = b.last_used_at;
+    if (la && lb) return lb.localeCompare(la);
+    if (la && !lb) return -1;
+    if (!la && lb) return 1;
+    return a.friendly_name.localeCompare(b.friendly_name);
+  });
+}
 
 export function ChatPage() {
   const { accounts, activeAccountId, setActiveAccountId, chat } = useOutletContext<AppContext>();
-  const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
-  const prevSessionId = useRef<string | null>(chat.currentSessionId);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [artifactWidth, setArtifactWidth] = useState<number>(loadInitialWidth);
+  const dragState = useRef<{ startX: number; startWidth: number } | null>(null);
 
-  // When a session id first appears (null → id), a new session was just created
-  // server-side. Bump the sidebar refresh key so the list picks it up.
+  const sortedAccounts = useMemo(() => sortAccountsByLastUsed(accounts), [accounts]);
+  const activeAccount =
+    accounts.find((a) => a.id === activeAccountId) ?? sortedAccounts[0] ?? null;
+
+  // Re-clamp on window resize so the panes don't overflow when the user
+  // narrows the browser window.
   useEffect(() => {
-    if (prevSessionId.current === null && chat.currentSessionId !== null) {
-      setSidebarRefreshKey((k) => k + 1);
+    function onResize() {
+      const el = containerRef.current;
+      if (!el) return;
+      setArtifactWidth((w) => clampArtifactWidth(w, el.clientWidth));
     }
-    prevSessionId.current = chat.currentSessionId;
-  }, [chat.currentSessionId]);
+    window.addEventListener("resize", onResize);
+    // Clamp on mount too, in case localStorage has a value wider than this viewport.
+    onResize();
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const onHandleDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      const target = e.currentTarget;
+      target.setPointerCapture(e.pointerId);
+      dragState.current = { startX: e.clientX, startWidth: artifactWidth };
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    },
+    [artifactWidth],
+  );
+
+  const onHandleMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    const s = dragState.current;
+    const el = containerRef.current;
+    if (!s || !el) return;
+    // Dragging the handle LEFT grows the artifact; RIGHT shrinks it.
+    const next = s.startWidth - (e.clientX - s.startX);
+    setArtifactWidth(clampArtifactWidth(next, el.clientWidth));
+  }, []);
+
+  const onHandleUp = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const target = e.currentTarget;
+      if (target.hasPointerCapture(e.pointerId)) target.releasePointerCapture(e.pointerId);
+      dragState.current = null;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      localStorage.setItem(ARTIFACT_WIDTH_KEY, String(Math.round(artifactWidth)));
+    },
+    [artifactWidth],
+  );
+
+  const gridStyle = {
+    gridTemplateColumns: `minmax(${CHAT_MIN_WIDTH}px, 1fr) ${HANDLE_WIDTH}px ${artifactWidth}px`,
+  };
 
   return (
-    <div className="h-full min-h-0 grid grid-cols-[auto_minmax(380px,1fr)_1.3fr] overflow-hidden">
-      <SessionsSidebar
-        currentSessionId={chat.currentSessionId}
-        onLoadSession={chat.loadSession}
-        onNewSession={chat.newSession}
-        refreshKey={sidebarRefreshKey}
-      />
-      <div className="flex flex-col min-h-0 h-full border-r border-slate-200">
-        {accounts.length > 1 && (
+    <div
+      ref={containerRef}
+      className="h-full min-h-0 grid overflow-hidden"
+      style={gridStyle}
+    >
+      <div className="flex flex-col min-h-0 h-full">
+        {accounts.length > 1 ? (
           <div className="px-5 py-2.5 border-b border-slate-200 bg-white text-sm flex items-center gap-2 shrink-0">
             <span className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
               Scope
             </span>
             <select
               className="border border-slate-300 rounded-md px-2 py-1 text-sm bg-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
-              value={activeAccountId ?? ""}
+              value={activeAccount?.id ?? ""}
               onChange={(e) => setActiveAccountId(e.target.value || null)}
             >
-              <option value="">— (let Claude ask)</option>
-              {accounts.map((a) => (
+              {sortedAccounts.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.friendly_name}
                 </option>
               ))}
             </select>
           </div>
-        )}
-        <ChatPane accounts={accounts} activeAccountId={activeAccountId} chat={chat} />
+        ) : activeAccount ? (
+          <div className="px-5 py-2.5 border-b border-slate-200 bg-white text-sm flex items-center gap-2 shrink-0">
+            <span className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
+              Scope
+            </span>
+            <span className="font-medium text-slate-900">{activeAccount.friendly_name}</span>
+          </div>
+        ) : null}
+        <ChatPane accounts={accounts} activeAccountId={activeAccount?.id ?? null} chat={chat} />
       </div>
-      <div className="bg-slate-50 overflow-hidden">
+
+      <div
+        onPointerDown={onHandleDown}
+        onPointerMove={onHandleMove}
+        onPointerUp={onHandleUp}
+        onPointerCancel={onHandleUp}
+        className="cursor-col-resize bg-slate-200 hover:bg-red-300 transition-colors"
+        title="Drag to resize"
+      />
+
+      <div className="bg-slate-50 overflow-hidden min-w-0">
         <ArtifactPane
           toolName={chat.artifact?.tool_name ?? null}
           text={chat.artifact?.text ?? null}

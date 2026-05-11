@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
-import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Outlet, useNavigate } from "react-router-dom";
 import { api, type AccountPublic, type Me } from "./lib/api.ts";
 import { useChatSession, type ChatSession } from "./lib/useChatSession.ts";
+import { SessionsSidebar } from "./components/SessionsSidebar.tsx";
 
 export type AppContext = {
   me: Me;
@@ -17,8 +18,8 @@ export function App() {
   const [loading, setLoading] = useState(true);
   const [accounts, setAccounts] = useState<AccountPublic[]>([]);
   const [activeAccountId, setActiveAccountId] = useState<string | null>(null);
+  const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
   const nav = useNavigate();
-  const loc = useLocation();
   const chat = useChatSession();
 
   useEffect(() => {
@@ -34,7 +35,7 @@ export function App() {
     setAccounts(accounts);
     setActiveAccountId((prev) => {
       if (prev && accounts.some((a) => a.id === prev)) return prev;
-      return accounts.length === 1 ? accounts[0].id : null;
+      return accounts.length >= 1 ? accounts[0].id : null;
     });
   }
 
@@ -42,17 +43,24 @@ export function App() {
     if (me) refreshAccounts();
   }, [me]);
 
+  // Bump sidebar refreshKey when a new session is created (null → id) and when
+  // any assistant turn produces a new message — the latter catches the
+  // auto-title backfill that lands after the first user turn completes.
+  const prevSessionId = useRef<string | null>(chat.currentSessionId);
+  const prevMsgCount = useRef<number>(chat.messages.length);
+  useEffect(() => {
+    let bump = false;
+    if (prevSessionId.current === null && chat.currentSessionId !== null) bump = true;
+    if (chat.messages.length !== prevMsgCount.current) bump = true;
+    prevSessionId.current = chat.currentSessionId;
+    prevMsgCount.current = chat.messages.length;
+    if (bump) setSidebarRefreshKey((k) => k + 1);
+  }, [chat.currentSessionId, chat.messages.length]);
+
   if (loading) {
     return <div className="p-8 text-slate-500">Loading…</div>;
   }
   if (!me) return null;
-
-  const tabCls = (active: boolean) =>
-    `relative text-sm px-1 py-3 -mb-px transition-colors ${
-      active
-        ? "text-slate-900 border-b-2 border-red-600 font-semibold"
-        : "text-slate-500 hover:text-slate-900 border-b-2 border-transparent"
-    }`;
 
   const ctx: AppContext = {
     me,
@@ -63,41 +71,22 @@ export function App() {
     chat,
   };
 
+  async function handleLogout() {
+    await api.logout();
+    chat.reset();
+    nav("/login");
+  }
+
   return (
-    <div className="h-screen flex flex-col bg-slate-50">
-      <header className="flex items-center justify-between px-6 border-b border-slate-200 bg-white">
-        <div className="flex items-center gap-8">
-          <div className="flex items-center gap-2 py-3">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-red-600 text-white text-xs font-bold leading-none">
-              T
-            </span>
-            <span className="font-semibold text-slate-900 tracking-tight">
-              Console Chat
-            </span>
-          </div>
-          <nav className="flex gap-5 self-stretch">
-            <Link to="/chat" className={tabCls(loc.pathname.startsWith("/chat"))}>
-              Chat
-            </Link>
-            <Link to="/accounts" className={tabCls(loc.pathname.startsWith("/accounts"))}>
-              Accounts
-            </Link>
-          </nav>
-        </div>
-        <div className="flex items-center gap-4 text-sm">
-          <span className="text-slate-500">{me.email}</span>
-          <button
-            className="text-slate-500 hover:text-slate-900 text-sm"
-            onClick={async () => {
-              await api.logout();
-              chat.reset();
-              nav("/login");
-            }}
-          >
-            Log out
-          </button>
-        </div>
-      </header>
+    <div className="h-screen flex bg-slate-50 overflow-hidden">
+      <SessionsSidebar
+        me={me}
+        currentSessionId={chat.currentSessionId}
+        onLoadSession={chat.loadSession}
+        onNewSession={chat.newSession}
+        onLogout={handleLogout}
+        refreshKey={sidebarRefreshKey}
+      />
       <main className="flex-1 min-h-0 overflow-hidden">
         <Outlet context={ctx} />
       </main>

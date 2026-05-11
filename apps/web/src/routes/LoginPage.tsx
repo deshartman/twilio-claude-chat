@@ -38,7 +38,7 @@ export function LoginPage() {
             T
           </span>
           <span className="font-semibold text-slate-900 tracking-tight text-lg">
-            Console Chat
+            Twilio Chat
           </span>
         </div>
         <form
