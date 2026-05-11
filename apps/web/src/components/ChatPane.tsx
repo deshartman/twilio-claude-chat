@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { AccountPublic } from "../lib/api.ts";
 import type { ChatMessage, ChatSession } from "../lib/useChatSession.ts";
 import { ConfirmModal } from "./ConfirmModal.tsx";
+import { Button } from "./ui/Button.tsx";
 
 export function ChatPane({
   accounts,
@@ -23,42 +24,49 @@ export function ChatPane({
     sendUserMessage(prompt, activeAccountId);
   }
 
+  const activeName =
+    accounts.find((a) => a.id === activeAccountId)?.friendly_name ?? "— (auto)";
+
   return (
-    <div className="min-h-0 h-full flex flex-col bg-white border-r">
-      <header className="p-3 border-b flex items-center gap-2 text-sm shrink-0">
-        <span className="text-slate-500">Active account:</span>
-        <span className="font-medium">
-          {accounts.find((a) => a.id === activeAccountId)?.friendly_name ?? "— (auto)"}
+    <div className="min-h-0 h-full flex flex-col bg-white">
+      <header className="px-5 py-3 border-b border-slate-200 flex items-center gap-3 text-sm shrink-0">
+        <span className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
+          Active
         </span>
-        <span className={`ml-auto text-xs ${wsReady ? "text-emerald-600" : "text-slate-400"}`}>
+        <span className="font-medium text-slate-900">{activeName}</span>
+        <span className="ml-auto flex items-center gap-1.5 text-xs text-slate-500">
+          <span
+            className={`inline-block w-1.5 h-1.5 rounded-full ${
+              wsReady ? "bg-emerald-500" : "bg-slate-300"
+            }`}
+          />
           {wsReady ? "connected" : "connecting…"}
         </span>
       </header>
-      <div className="flex-1 min-h-0 overflow-auto p-4 space-y-3">
+      <div className="flex-1 min-h-0 overflow-auto px-6 py-5 space-y-4">
         {messages.length === 0 && (
-          <p className="text-slate-400 text-sm">
-            Ask about your Twilio estate. Example: "list my phone numbers".
-          </p>
+          <div className="max-w-md mx-auto text-center pt-16">
+            <p className="text-slate-900 font-medium">Ask about your Twilio estate.</p>
+            <p className="text-sm text-slate-500 mt-1">
+              Try: <span className="font-mono text-slate-700">list my phone numbers</span>
+            </p>
+          </div>
         )}
         {messages.map((m, i) => (
           <MessageRow key={i} m={m} />
         ))}
       </div>
-      <form onSubmit={send} className="p-3 border-t flex gap-2 shrink-0">
+      <form onSubmit={send} className="px-5 py-3 border-t border-slate-200 flex gap-2 shrink-0 bg-white">
         <input
-          className="flex-1 border rounded px-3 py-2 text-sm"
+          className="flex-1 border border-slate-300 rounded-md px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={busy ? "thinking…" : wsReady ? "Type a message" : "connecting…"}
           disabled={busy || !wsReady}
         />
-        <button
-          type="submit"
-          disabled={busy || !input.trim() || !wsReady}
-          className="bg-slate-900 text-white rounded px-4 py-2 text-sm disabled:opacity-50"
-        >
+        <Button type="submit" disabled={busy || !input.trim() || !wsReady}>
           Send
-        </button>
+        </Button>
       </form>
       {confirmReq && <ConfirmModal req={confirmReq} onDecide={decideConfirm} />}
     </div>
@@ -69,7 +77,7 @@ function MessageRow({ m }: { m: ChatMessage }) {
   if (m.kind === "user") {
     return (
       <div className="flex justify-end">
-        <div className="bg-slate-900 text-white rounded px-3 py-2 text-sm max-w-[80%] whitespace-pre-wrap">
+        <div className="bg-slate-900 text-white rounded-lg rounded-br-sm px-3.5 py-2 text-sm max-w-[80%] whitespace-pre-wrap">
           {m.text}
         </div>
       </div>
@@ -77,21 +85,22 @@ function MessageRow({ m }: { m: ChatMessage }) {
   }
   if (m.kind === "assistant") {
     return (
-      <div className="bg-slate-100 rounded px-3 py-2 text-sm max-w-[80%] whitespace-pre-wrap break-words overflow-x-auto">
+      <div className="text-sm text-slate-900 leading-relaxed max-w-[80%] whitespace-pre-wrap break-words overflow-x-auto">
         {m.text}
       </div>
     );
   }
   if (m.kind === "tool_use") {
     return (
-      <div className="text-xs text-slate-500 font-mono border-l-2 border-slate-300 pl-2">
-        → {m.tool_name}({Object.keys(m.input).length > 0 ? "…" : ""})
+      <div className="text-xs text-slate-500 font-mono border-l-2 border-slate-200 pl-3 py-0.5">
+        <span className="text-slate-400">→</span> {m.tool_name}
+        <span className="text-slate-400">({Object.keys(m.input).length > 0 ? "…" : ""})</span>
       </div>
     );
   }
   return (
-    <div className="text-xs text-slate-500 font-mono border-l-2 border-emerald-300 pl-2 truncate">
-      ← {m.text.split("\n")[0].slice(0, 100)}
+    <div className="text-xs text-slate-500 font-mono border-l-2 border-red-300 pl-3 py-0.5 truncate">
+      <span className="text-slate-400">←</span> {m.text.split("\n")[0].slice(0, 100)}
     </div>
   );
 }

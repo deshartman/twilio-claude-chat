@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { api, type AccountPublic, type AuthMode, type NewAccountInput, type ScanStatus } from "../lib/api.ts";
 import type { AppContext } from "../App.tsx";
+import { Button } from "../components/ui/Button.tsx";
 
 type FormState = {
   friendly_name: string;
@@ -126,48 +127,59 @@ export function AccountsPage() {
     await refreshAccounts();
   }
 
-  const inputCls = "w-full border rounded px-2 py-1 text-sm font-mono";
+  const inputCls =
+    "w-full border border-slate-300 rounded-md px-3 py-2 text-sm font-mono " +
+    "focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500";
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6 overflow-auto h-full">
+    <div className="p-8 max-w-3xl mx-auto space-y-8 overflow-auto h-full">
+      <div>
+        <h1 className="text-xl font-semibold text-slate-900">Accounts</h1>
+        <p className="text-sm text-slate-500 mt-1">
+          Credentials are encrypted per row. Decryption happens only when an agent tool runs.
+        </p>
+      </div>
+
       <section>
-        <h2 className="text-lg font-semibold mb-3">Configured accounts</h2>
+        <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-3">
+          Configured
+        </h2>
         {accounts.length === 0 ? (
-          <p className="text-slate-500 text-sm">None yet. Add one below.</p>
+          <div className="text-sm text-slate-500 bg-white border border-slate-200 rounded-lg p-6 text-center">
+            None yet. Add one below.
+          </div>
         ) : (
-          <ul className="divide-y border rounded bg-white">
+          <ul className="divide-y divide-slate-200 border border-slate-200 rounded-lg bg-white">
             {accounts.map((a) => {
               const isScanning =
                 a.scan_status === "pending" || a.scan_status === "running" || rescanning.has(a.id);
               return (
-                <li key={a.id} className="flex items-center justify-between p-3">
-                  <div>
-                    <div className="font-medium flex items-center gap-2">
-                      <span>{a.friendly_name}</span>
+                <li key={a.id} className="flex items-center justify-between px-4 py-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-slate-900 truncate">{a.friendly_name}</span>
                       <StatusChip account={a} />
                     </div>
-                    <div className="text-xs text-slate-500 font-mono">
+                    <div className="text-xs text-slate-500 font-mono mt-0.5 truncate">
                       {a.account_sid} · {a.auth_mode === "auth_token" ? "auth token" : "API key"}
                       {a.is_subaccount && " · subaccount"}
                     </div>
                     {a.scan_status === "failed" && a.scan_error && (
-                      <div className="text-xs text-red-600 mt-1">{a.scan_error}</div>
+                      <div className="text-xs text-red-700 mt-1">{a.scan_error}</div>
                     )}
                   </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      className="text-slate-600 text-sm hover:underline disabled:opacity-40 disabled:no-underline"
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={() => rescan(a.id)}
                       disabled={isScanning}
                     >
                       {isScanning ? "Scanning…" : "Rescan"}
-                    </button>
-                    <button
-                      className="text-red-600 text-sm hover:underline"
-                      onClick={() => del(a.id)}
-                    >
+                    </Button>
+                    <Button variant="danger" size="sm" onClick={() => del(a.id)}>
                       Delete
-                    </button>
+                    </Button>
                   </div>
                 </li>
               );
@@ -177,10 +189,15 @@ export function AccountsPage() {
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold mb-3">Add account</h2>
-        <form onSubmit={submit} className="bg-white p-4 rounded border space-y-3">
+        <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-3">
+          Add account
+        </h2>
+        <form
+          onSubmit={submit}
+          className="bg-white p-5 rounded-lg border border-slate-200 space-y-4"
+        >
           <label className="block">
-            <span className="text-sm text-slate-600">Friendly name</span>
+            <span className="text-sm text-slate-700">Friendly name</span>
             <input
               className={inputCls}
               value={form.friendly_name}
@@ -189,7 +206,7 @@ export function AccountsPage() {
             />
           </label>
           <label className="block">
-            <span className="text-sm text-slate-600">Account SID (AC…)</span>
+            <span className="text-sm text-slate-700">Account SID (AC…)</span>
             <input
               className={inputCls}
               value={form.account_sid}
@@ -198,21 +215,28 @@ export function AccountsPage() {
               required
             />
           </label>
-          <fieldset className="border rounded p-3 space-y-2">
-            <legend className="text-sm text-slate-600 px-1">Authentication</legend>
-            <label className="flex items-center gap-2 text-sm">
+          <fieldset className="border border-slate-200 rounded-md p-3 space-y-2">
+            <legend className="text-xs font-semibold uppercase tracking-wide text-slate-600 px-1.5">
+              Authentication
+            </legend>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
               <input
                 type="radio"
                 name="auth_mode"
+                className="accent-red-600"
                 checked={form.auth_mode === "api_key"}
                 onChange={() => setForm({ ...form, auth_mode: "api_key" })}
               />
-              <span>API Key (SK… + secret) — recommended</span>
+              <span>
+                API Key (SK… + secret) —{" "}
+                <span className="text-slate-500">recommended</span>
+              </span>
             </label>
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
               <input
                 type="radio"
                 name="auth_mode"
+                className="accent-red-600"
                 checked={form.auth_mode === "auth_token"}
                 onChange={() => setForm({ ...form, auth_mode: "auth_token" })}
               />
@@ -222,7 +246,7 @@ export function AccountsPage() {
           {form.auth_mode === "api_key" ? (
             <>
               <label className="block">
-                <span className="text-sm text-slate-600">API Key SID (SK…)</span>
+                <span className="text-sm text-slate-700">API Key SID (SK…)</span>
                 <input
                   className={inputCls}
                   value={form.api_key_sid}
@@ -232,7 +256,7 @@ export function AccountsPage() {
                 />
               </label>
               <label className="block">
-                <span className="text-sm text-slate-600">API Key Secret</span>
+                <span className="text-sm text-slate-700">API Key Secret</span>
                 <input
                   type="password"
                   className={inputCls}
@@ -245,7 +269,7 @@ export function AccountsPage() {
             </>
           ) : (
             <label className="block">
-              <span className="text-sm text-slate-600">Auth Token (32 hex chars)</span>
+              <span className="text-sm text-slate-700">Auth Token (32 hex chars)</span>
               <input
                 type="password"
                 className={inputCls}
@@ -256,22 +280,25 @@ export function AccountsPage() {
               />
             </label>
           )}
-          <label className="flex items-center gap-2 text-sm text-slate-600">
+          <label className="flex items-center gap-2 text-sm text-slate-700">
             <input
               type="checkbox"
+              className="accent-red-600"
               checked={form.is_subaccount}
               onChange={(e) => setForm({ ...form, is_subaccount: e.target.checked })}
             />
             This is a subaccount
           </label>
-          {err && <p className="text-sm text-red-600">{err}</p>}
-          <button
-            type="submit"
-            disabled={busy}
-            className="bg-slate-900 text-white rounded px-4 py-1.5 text-sm disabled:opacity-50"
-          >
-            {busy ? "…" : "Add account"}
-          </button>
+          {err && (
+            <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1.5">
+              {err}
+            </p>
+          )}
+          <div className="pt-1">
+            <Button type="submit" disabled={busy}>
+              {busy ? "…" : "Add account"}
+            </Button>
+          </div>
         </form>
       </section>
     </div>

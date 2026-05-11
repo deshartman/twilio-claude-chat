@@ -48,8 +48,10 @@ export function App() {
   if (!me) return null;
 
   const tabCls = (active: boolean) =>
-    `px-3 py-1.5 rounded text-sm ${
-      active ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-200"
+    `relative text-sm px-1 py-3 -mb-px transition-colors ${
+      active
+        ? "text-slate-900 border-b-2 border-red-600 font-semibold"
+        : "text-slate-500 hover:text-slate-900 border-b-2 border-transparent"
     }`;
 
   const ctx: AppContext = {
@@ -62,11 +64,18 @@ export function App() {
   };
 
   return (
-    <div className="h-screen flex flex-col">
-      <header className="flex items-center justify-between px-4 py-2 border-b bg-white">
-        <div className="flex items-center gap-3">
-          <span className="font-semibold">Twilio Console Chat</span>
-          <nav className="flex gap-1">
+    <div className="h-screen flex flex-col bg-slate-50">
+      <header className="flex items-center justify-between px-6 border-b border-slate-200 bg-white">
+        <div className="flex items-center gap-8">
+          <div className="flex items-center gap-2 py-3">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-red-600 text-white text-xs font-bold leading-none">
+              T
+            </span>
+            <span className="font-semibold text-slate-900 tracking-tight">
+              Console Chat
+            </span>
+          </div>
+          <nav className="flex gap-5 self-stretch">
             <Link to="/chat" className={tabCls(loc.pathname.startsWith("/chat"))}>
               Chat
             </Link>
@@ -75,10 +84,10 @@ export function App() {
             </Link>
           </nav>
         </div>
-        <div className="flex items-center gap-3 text-sm">
+        <div className="flex items-center gap-4 text-sm">
           <span className="text-slate-500">{me.email}</span>
           <button
-            className="text-slate-600 hover:text-slate-900"
+            className="text-slate-500 hover:text-slate-900 text-sm"
             onClick={async () => {
               await api.logout();
               chat.reset();

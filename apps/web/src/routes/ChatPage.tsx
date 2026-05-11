@@ -27,12 +27,14 @@ export function ChatPage() {
         onNewSession={chat.newSession}
         refreshKey={sidebarRefreshKey}
       />
-      <div className="flex flex-col min-h-0 h-full">
+      <div className="flex flex-col min-h-0 h-full border-r border-slate-200">
         {accounts.length > 1 && (
-          <div className="px-3 py-2 border-b bg-white text-sm flex items-center gap-2">
-            <span className="text-slate-500">Scope:</span>
+          <div className="px-5 py-2.5 border-b border-slate-200 bg-white text-sm flex items-center gap-2 shrink-0">
+            <span className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
+              Scope
+            </span>
             <select
-              className="border rounded px-2 py-1 text-sm"
+              className="border border-slate-300 rounded-md px-2 py-1 text-sm bg-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
               value={activeAccountId ?? ""}
               onChange={(e) => setActiveAccountId(e.target.value || null)}
             >

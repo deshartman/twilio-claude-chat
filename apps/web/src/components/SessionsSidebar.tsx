@@ -50,39 +50,49 @@ export function SessionsSidebar({
   }
 
   return (
-    <aside className="flex flex-col h-full min-h-0 border-r bg-white w-60">
-      <div className="p-2 border-b">
+    <aside className="flex flex-col h-full min-h-0 border-r border-slate-200 bg-white w-60 shrink-0">
+      <div className="px-3 py-3 border-b border-slate-200">
         <button
           onClick={onNewSession}
-          className="w-full text-sm border rounded px-2 py-1.5 hover:bg-slate-50 text-slate-700"
+          className="w-full text-sm font-medium border border-slate-300 rounded-md px-3 py-1.5 text-slate-700 bg-white hover:bg-slate-50 hover:border-slate-400 transition-colors"
         >
           + New chat
         </button>
       </div>
-      <div className="flex-1 min-h-0 overflow-auto">
+      <div className="px-3 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        Recents
+      </div>
+      <div className="flex-1 min-h-0 overflow-auto pb-3">
         {loading ? (
-          <div className="p-3 text-xs text-slate-400">Loading…</div>
+          <div className="px-3 py-2 text-xs text-slate-400">Loading…</div>
         ) : sessions.length === 0 ? (
-          <div className="p-3 text-xs text-slate-400">No chats yet.</div>
+          <div className="px-3 py-2 text-xs text-slate-400">No chats yet.</div>
         ) : (
-          <ul className="divide-y">
+          <ul className="space-y-0.5">
             {sessions.map((s) => {
               const active = s.id === currentSessionId;
               return (
                 <li
                   key={s.id}
                   onClick={() => void onLoadSession(s.id)}
-                  className={`group px-3 py-2 cursor-pointer text-sm flex items-start justify-between gap-2 ${
-                    active ? "bg-slate-100" : "hover:bg-slate-50"
+                  className={`group relative pl-4 pr-2 py-1.5 cursor-pointer text-sm flex items-start justify-between gap-2 transition-colors ${
+                    active
+                      ? "bg-slate-50 text-slate-900"
+                      : "text-slate-700 hover:bg-slate-50"
                   }`}
                 >
+                  {active && (
+                    <span className="absolute left-0 top-1 bottom-1 w-0.5 rounded-r bg-red-600" />
+                  )}
                   <div className="min-w-0 flex-1">
-                    <div className="truncate">{s.title ?? "(untitled)"}</div>
+                    <div className={`truncate ${active ? "font-medium" : ""}`}>
+                      {s.title ?? "(untitled)"}
+                    </div>
                     <div className="text-xs text-slate-400">{relativeTime(s.updated_at)}</div>
                   </div>
                   <button
                     onClick={(e) => remove(s.id, e)}
-                    className="opacity-0 group-hover:opacity-100 text-xs text-red-500 hover:text-red-700 px-1"
+                    className="opacity-0 group-hover:opacity-100 text-xs text-slate-400 hover:text-red-600 px-1 transition-colors"
                     title="Delete"
                   >
                     ✕

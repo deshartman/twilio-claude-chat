@@ -18,8 +18,9 @@ export function ArtifactPane({ toolName, text }: { toolName: string | null; text
 
   if (!text) {
     return (
-      <div className="h-full flex items-center justify-center text-slate-400 text-sm">
-        Tool results will appear here.
+      <div className="h-full flex flex-col items-center justify-center text-slate-400 text-sm gap-1">
+        <span className="text-slate-600 font-medium">Tool results</span>
+        <span className="text-xs">will appear here as the agent runs tools.</span>
       </div>
     );
   }
@@ -55,45 +56,56 @@ function isPhoneNumbersResult(v: unknown): v is PhoneNumbersResult {
 
 function PhoneNumbersTable({ data }: { data: PhoneNumbersResult }) {
   return (
-    <div className="p-4 space-y-3 overflow-auto h-full">
-      <div className="text-sm text-slate-500">
-        {data.count} number{data.count === 1 ? "" : "s"} in{" "}
-        <span className="font-medium">{data.account.friendly_name}</span>
+    <div className="p-5 space-y-4 overflow-auto h-full">
+      <div className="flex items-baseline justify-between">
+        <div className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
+          Phone numbers
+        </div>
+        <div className="text-sm text-slate-600">
+          <span className="font-semibold text-slate-900">{data.count}</span> in{" "}
+          <span className="font-medium text-slate-900">{data.account.friendly_name}</span>
+        </div>
       </div>
-      <table className="w-full text-sm border-collapse">
-        <thead className="bg-slate-100 text-left">
-          <tr>
-            <th className="p-2">Number</th>
-            <th className="p-2">Friendly name</th>
-            <th className="p-2">Voice URL</th>
-            <th className="p-2">SMS URL</th>
-            <th className="p-2">Caps</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.numbers.map((n) => (
-            <tr key={n.sid} className="border-t">
-              <td className="p-2 font-mono">{n.phone_number}</td>
-              <td className="p-2">{n.friendly_name}</td>
-              <td className="p-2 font-mono text-xs truncate max-w-[16ch]">{n.voice_url ?? "—"}</td>
-              <td className="p-2 font-mono text-xs truncate max-w-[16ch]">{n.sms_url ?? "—"}</td>
-              <td className="p-2 text-xs">
-                {Object.entries(n.capabilities)
-                  .filter(([, v]) => v)
-                  .map(([k]) => k)
-                  .join(", ")}
-              </td>
+      <div className="border border-slate-200 rounded-lg bg-white overflow-hidden">
+        <table className="w-full text-sm border-collapse">
+          <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">
+            <tr>
+              <th className="px-3 py-2 font-semibold">Number</th>
+              <th className="px-3 py-2 font-semibold">Friendly name</th>
+              <th className="px-3 py-2 font-semibold">Voice URL</th>
+              <th className="px-3 py-2 font-semibold">SMS URL</th>
+              <th className="px-3 py-2 font-semibold">Caps</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {data.numbers.map((n) => (
+              <tr key={n.sid} className="border-t border-slate-200 hover:bg-slate-50">
+                <td className="px-3 py-2 font-mono text-slate-900">{n.phone_number}</td>
+                <td className="px-3 py-2 text-slate-700">{n.friendly_name}</td>
+                <td className="px-3 py-2 font-mono text-xs text-slate-600 truncate max-w-[16ch]">
+                  {n.voice_url ?? "—"}
+                </td>
+                <td className="px-3 py-2 font-mono text-xs text-slate-600 truncate max-w-[16ch]">
+                  {n.sms_url ?? "—"}
+                </td>
+                <td className="px-3 py-2 text-xs text-slate-600">
+                  {Object.entries(n.capabilities)
+                    .filter(([, v]) => v)
+                    .map(([k]) => k)
+                    .join(", ")}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
 function PrettyJson({ value }: { value: unknown }) {
   return (
-    <pre className="p-4 text-xs font-mono whitespace-pre-wrap break-all overflow-auto h-full bg-slate-50">
+    <pre className="p-5 text-xs font-mono text-slate-800 whitespace-pre-wrap break-all overflow-auto h-full bg-slate-50">
       {typeof value === "string" ? value : JSON.stringify(value, null, 2)}
     </pre>
   );
