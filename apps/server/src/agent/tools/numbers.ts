@@ -13,6 +13,9 @@ type CachedPhoneNumber = {
   voice_url: string | null;
   sms_url: string | null;
   capabilities: Record<string, boolean>;
+  bundle_sid: string | null;
+  address_sid: string | null;
+  address_requirements: string | null;
 };
 
 async function getCachedPhoneNumberList(
@@ -32,6 +35,9 @@ async function getCachedPhoneNumberList(
         voice_url: n.voiceUrl ?? null,
         sms_url: n.smsUrl ?? null,
         capabilities: (n.capabilities as Record<string, boolean>) ?? {},
+        bundle_sid: (n as { bundleSid?: string | null }).bundleSid ?? null,
+        address_sid: n.addressSid ?? null,
+        address_requirements: n.addressRequirements ?? null,
       }));
     },
   );
@@ -118,6 +124,9 @@ export function buildFetchPhoneNumberTool(userId: string, activeAccountId: strin
             sms_fallback_url: n.smsFallbackUrl,
             status_callback: n.statusCallback,
             capabilities: n.capabilities,
+            bundle_sid: (n as { bundleSid?: string | null }).bundleSid ?? null,
+            address_sid: n.addressSid ?? null,
+            address_requirements: n.addressRequirements ?? null,
             origin: n.origin,
             date_created: n.dateCreated,
           };

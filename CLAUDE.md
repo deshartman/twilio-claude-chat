@@ -97,7 +97,15 @@ Generate secrets with: `node -e "console.log(require('crypto').randomBytes(32).t
 
 ## What's intentionally out of scope for v1
 
-Regulatory Bundle creation (file uploads too rich for a chat flow), Studio flow editing, TCR A2P campaign submission, billing/subaccount creation, Flex/Studio/Video. These are listed in the plan as "console wins here"; don't add them unless the scope discussion changes.
+Regulatory Bundle **creation** (the Twilio Node SDK doesn't expose file upload for SupportingDocuments — binary uploads like passport scans / LOAs only go through the Console or a direct multipart REST call), Bundle Copies / Replace Items for changing bundle contents, Studio flow editing, TCR A2P campaign submission, billing/subaccount creation, Flex/Studio/Video. These are listed in the plan as "console wins here"; don't add them unless the scope discussion changes.
+
+**In scope (regulatory compliance tools, merged from `feat/regulatory-bundles`):**
+- `list_regulatory_bundles` — find approved bundle SIDs by country/status
+- `list_addresses` — find Address SIDs by country
+- `create_address` — create a new Address resource (text fields only, no file upload)
+- `bulk_assign_bundle_to_numbers` — attach a bundle (and optionally an address) to many phone numbers in one confirmation-gated call; short-circuits already-correct rows, 200-number cap
+
+Phone number list/fetch now surfaces `bundle_sid`, `address_sid`, and `address_requirements` so the model can reason about regulatory state without extra roundtrips.
 
 ## Plan files
 

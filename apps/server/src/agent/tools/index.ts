@@ -20,6 +20,12 @@ import {
   buildAddSenderToMessagingServiceTool,
   buildListConversationsTool,
 } from "./messaging.js";
+import {
+  buildListRegulatoryBundlesTool,
+  buildListAddressesTool,
+  buildCreateAddressTool,
+  buildBulkAssignBundleTool,
+} from "./bundles.js";
 
 export function buildAllTools(userId: string, activeAccountId: string | null) {
   return [
@@ -45,5 +51,11 @@ export function buildAllTools(userId: string, activeAccountId: string | null) {
     // Messaging (write — confirmation-gated)
     buildCreateMessagingServiceTool(userId, activeAccountId),
     buildAddSenderToMessagingServiceTool(userId, activeAccountId),
+    // Regulatory bundles + addresses (read)
+    buildListRegulatoryBundlesTool(userId, activeAccountId),
+    buildListAddressesTool(userId, activeAccountId),
+    // Regulatory bundles + addresses (write — confirmation-gated)
+    buildCreateAddressTool(userId, activeAccountId),
+    buildBulkAssignBundleTool(userId, activeAccountId),
   ];
 }

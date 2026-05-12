@@ -111,7 +111,7 @@ pnpm db:up
 
 ## Architecture at a glance
 
-- `apps/server` — Fastify + Claude Agent SDK (TypeScript, ESM). Owns auth, sessions, account CRUD, WebSocket chat, 16 Twilio tools, the resource cache, and the async pre-scan on account creation.
+- `apps/server` — Fastify + Claude Agent SDK (TypeScript, ESM). Owns auth, sessions, account CRUD, WebSocket chat, 20 Twilio tools (numbers, messaging, logs, regulatory bundles + addresses), the resource cache, and the async pre-scan on account creation.
 - `apps/web` — Vite + React + Tailwind. Single-page app: sidebar with Recents, chat pane, artifact pane for tool results.
 - `packages/shared` — WebSocket message types shared between server and web.
 
@@ -173,9 +173,22 @@ If a user rotates their Twilio API key in the Twilio console, open **Accounts �
 - **Bedrock 403 on first request?** Your AWS account needs explicit model access to Claude Opus 4.7 in the chosen `AWS_REGION`. Granted in the Bedrock console under "Model access".
 - **`main().catch()` in server bootstrap.** Linter flags it as a preference warning — the pattern is correct for Fastify. Ignore.
 
+## Regulatory compliance
+
+Four tools cover the common "update a bundle/address on numbers" workflow:
+
+- `list_regulatory_bundles` — find bundle SIDs by country or status
+- `list_addresses` — find address SIDs by country
+- `create_address` — create a new Address resource (no file upload; text fields only)
+- `bulk_assign_bundle_to_numbers` — attach a bundle (and optionally an address) to many phone numbers in one confirmation-gated call. Uses [`runBounded`](apps/server/src/util/bounded.ts) for parallel updates with a per-job timeout and a 200-number cap
+
+Phone-number listings now include `bundle_sid`, `address_sid`, and `address_requirements` so you can see at a glance which numbers are out of compliance.
+
 ## What's intentionally out of scope
 
-Regulatory Bundle creation, Studio flow editing, TCR A2P campaign submission, billing/subaccount creation, Flex/Studio/Video. The Twilio Console has rich UIs for these and a chat surface doesn't beat them.
+**Regulatory Bundle creation** — requires file uploads (passport scans, LOAs, registration docs) that the Twilio Node SDK doesn't expose and that don't belong in a chat surface. Create bundles in the Twilio Console; this app can then list and assign them.
+
+**Bundle Copies / Replace Items** (updating bundle *contents* when regulations change), Studio flow editing, TCR A2P campaign submission, billing/subaccount creation, Flex/Studio/Video. The Twilio Console has rich UIs for these and a chat surface doesn't beat them.
 
 ## Tests
 

@@ -10,6 +10,8 @@ export const WRITE_TOOLS = new Set([
   "mcp__twilio-ops__create_messaging_service",
   "mcp__twilio-ops__add_sender_to_messaging_service",
   "mcp__twilio-ops__release_phone_number",
+  "mcp__twilio-ops__bulk_assign_bundle_to_numbers",
+  "mcp__twilio-ops__create_address",
 ]);
 
 export function isReadTool(name: string): boolean {
@@ -72,5 +74,11 @@ function summarizeWrite(toolName: string, input: Record<string, unknown>): strin
   if (input.area_code) parts.push(`area: ${input.area_code}`);
   if (input.friendly_name) parts.push(`name: ${input.friendly_name}`);
   if (input.service_sid) parts.push(`service: ${input.service_sid}`);
+  if (input.bundle_sid) parts.push(`bundle: ${input.bundle_sid}`);
+  if (input.address_sid) parts.push(`address: ${input.address_sid}`);
+  if (input.customer_name) parts.push(`customer: ${input.customer_name}`);
+  if (input.iso_country) parts.push(`country: ${input.iso_country}`);
+  if (Array.isArray(input.phone_number_sids)) parts.push(`numbers: ${input.phone_number_sids.length}`);
+  else if (Array.isArray(input.phone_numbers)) parts.push(`numbers: ${input.phone_numbers.length}`);
   return parts.length ? `${short} — ${parts.join(", ")}` : short;
 }

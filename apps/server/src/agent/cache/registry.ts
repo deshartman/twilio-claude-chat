@@ -14,7 +14,9 @@ export type ResourceType =
   | "phone_number"
   | "messaging_services"
   | "messaging_service"
-  | "messaging_service_senders";
+  | "messaging_service_senders"
+  | "regulatory_bundles"
+  | "addresses";
 
 /**
  * Stable JSON stringify — object keys sorted recursively so {a:1,b:2} and
