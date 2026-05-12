@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A "UI-less Twilio Console" — a multi-tenant chat app that replaces the Twilio Console. Users type natural-language intents ("show my AU mobile numbers", "update the voice webhook for +1…", "why did CAxxx fail?") and Claude reasons over their Twilio estate with both read and write tools.
 
-Built on the **Claude Agent SDK** (`@anthropic-ai/claude-agent-sdk`) so the agent loop, plugin-installed skills, MCP servers, and permission hooks are inherited rather than reimplemented. LLM provider is **Amazon Bedrock** — this is a hard compliance requirement, not a default.
+Built on the **Claude Agent SDK** (`@anthropic-ai/claude-agent-sdk`) so the agent loop, plugin-installed skills, MCP servers, and permission hooks are inherited rather than reimplemented. Supports two Claude providers: **direct Anthropic API** (`ANTHROPIC_API_KEY`) and **Amazon Bedrock** (`CLAUDE_CODE_USE_BEDROCK=1` + AWS creds). The SDK auto-detects — Bedrock wins if its flag is set, otherwise direct API. This deployment typically runs on Bedrock for corporate LLM routing; external forks often run on the direct API.
 
 ## Common commands
 
@@ -74,12 +74,14 @@ The chat column uses nested flex containers. Every ancestor in the flex chain (`
 
 ## Environment variables
 
-All required in `.env` (copied from `.env.example`):
+Single `.env` at the **repo root** (copied from `.env.example`). The server explicitly loads it via [apps/server/src/env.ts](apps/server/src/env.ts), imported first-as-side-effect in [apps/server/src/index.ts](apps/server/src/index.ts). No `apps/server/.env` — if you see one, it's stale and ignored.
 
 - `DATABASE_URL` — Postgres connection string. Docker compose uses `:5433` (host port) to avoid conflicts with other local Postgres instances.
 - `APP_SECRET_KEY` — 32 bytes base64, AES-GCM data key. Distinct from SESSION_SECRET.
 - `SESSION_SECRET` — 32 bytes base64, Fastify cookie signing.
-- `CLAUDE_CODE_USE_BEDROCK=1` + `AWS_REGION` + `ANTHROPIC_DEFAULT_OPUS_MODEL=us.anthropic.claude-opus-4-7` + `AWS_PROFILE` (or static keys). Model access for Opus 4.7 must be granted in the Bedrock console in the chosen region.
+- Claude provider — **pick one**:
+  - **Direct API:** `ANTHROPIC_API_KEY=sk-ant-…`
+  - **Bedrock:** `CLAUDE_CODE_USE_BEDROCK=1` + `AWS_REGION` + `ANTHROPIC_DEFAULT_OPUS_MODEL=us.anthropic.claude-opus-4-7` + `AWS_PROFILE` (or static `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`). Model access for Opus 4.7 must be granted in the Bedrock console for the chosen region.
 
 Generate secrets with: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`.
 

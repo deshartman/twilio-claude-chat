@@ -2,13 +2,32 @@
 
 A UI-less Twilio Console. Type natural-language intents — *"show my AU mobile numbers"*, *"update the voice webhook for +1…"*, *"why did CAxxx fail?"* — and Claude reasons over your Twilio estate with both read and write tools. Multi-tenant, per-user encrypted credentials, human-in-the-loop confirmation for every write.
 
-Built on the [Claude Agent SDK](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk), served through **Amazon Bedrock**.
+Built on the [Claude Agent SDK](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk). This is **Claude-only** — no other LLM provider is supported. Works with either the **direct Anthropic API** or **Amazon Bedrock**; pick whichever fits your environment.
+
+## Choosing a Claude provider
+
+Two first-class paths, pick one:
+
+**Direct Anthropic API** — the simplest path. Sign up at [console.anthropic.com](https://console.anthropic.com/), generate an `sk-ant-…` API key, set `ANTHROPIC_API_KEY` in your `.env`. Billing goes through Anthropic. Good for individual developers, evaluation, or any org that doesn't already have an LLM procurement path through AWS.
+
+**Amazon Bedrock** — use this if your organization already routes LLM traffic through AWS (consolidated billing, VPC isolation, existing IAM, compliance posture). Requires an AWS account with model access granted to Claude Opus 4.7 in your chosen region.
+
+Provider precedence: if `CLAUDE_CODE_USE_BEDROCK=1` is set, Bedrock wins; otherwise `ANTHROPIC_API_KEY` is used. Model ID handling differs:
+
+| Provider | Model ID | How it's set |
+|---|---|---|
+| Direct Anthropic API | `claude-opus-4-7` | Agent SDK resolves `model: "opus"` directly |
+| Amazon Bedrock | `us.anthropic.claude-opus-4-7` | Pinned via `ANTHROPIC_DEFAULT_OPUS_MODEL` |
+
+The codebase uses `model: "opus"` and lets the SDK resolve under whichever provider is active — no code change is needed to switch.
 
 ## Requirements
 
 - **Node.js 20+** and **pnpm 10+** (`npm install -g pnpm`)
 - **Docker** (for local Postgres)
-- **AWS account** with Bedrock access, specifically model access granted to *Claude Opus 4.7* (`us.anthropic.claude-opus-4-7`) in your chosen region
+- **Claude provider credentials** — one of:
+  - An Anthropic API key (`sk-ant-…`) from [console.anthropic.com](https://console.anthropic.com/), or
+  - An AWS account with Bedrock model access granted to *Claude Opus 4.7* (`us.anthropic.claude-opus-4-7`) in your chosen region
 - **Twilio account(s)** to actually point the agent at. API Key + Secret **or** Account SID + Auth Token both work.
 
 ## Quick start
@@ -17,16 +36,16 @@ Built on the [Claude Agent SDK](https://www.npmjs.com/package/@anthropic-ai/clau
 # 1. Install deps
 pnpm install
 
-# 2. Set up env
+# 2. Set up env (single file at repo root)
 cp .env.example .env
-cp .env.example apps/server/.env    # server reads its own .env
 
 # Generate the two required 32-byte secrets:
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
-# Paste one into APP_SECRET_KEY and the other into SESSION_SECRET in both .env files.
-# Then fill in the AWS and Bedrock values (see "Environment" below).
+# Paste one into APP_SECRET_KEY and the other into SESSION_SECRET in .env.
+# Then fill in EITHER the direct Anthropic API block OR the Bedrock block
+# (see "Choosing a Claude provider" above and the env table below).
 
 # 3. Start Postgres (first boot loads apps/server/src/db/schema.sql automatically)
 pnpm db:up
@@ -48,12 +67,16 @@ Open **http://localhost:5173/**. Sign up for a local account, add a Twilio accou
 | `APP_SECRET_KEY_V{N}` | | Explicit key slot for version N. During rotation, you run with multiple versions loaded simultaneously. |
 | `APP_SECRET_KEY_CURRENT` | | Which key version `seal()` uses for NEW rows. Defaults to the highest loaded version. |
 | `SESSION_SECRET` | ✅ | 32 bytes base64. Fastify cookie signing secret. Distinct from `APP_SECRET_KEY`. |
-| `CLAUDE_CODE_USE_BEDROCK` | ✅ | Set to `1` to route the Agent SDK through Bedrock. |
-| `AWS_REGION` | ✅ | The region where Opus 4.7 is enabled for your AWS account (e.g. `us-west-2`). |
-| `ANTHROPIC_DEFAULT_OPUS_MODEL` | ✅ | `us.anthropic.claude-opus-4-7` — the Bedrock cross-region inference profile. |
-| `AWS_PROFILE` *or* `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` | ✅ | Pick one auth method. SSO profile works if you `aws sso login` first. |
+| **Provider — pick one block below** | | |
+| `ANTHROPIC_API_KEY` | A | Direct Anthropic API key (`sk-ant-…`). Required if *not* using Bedrock. |
+| `CLAUDE_CODE_USE_BEDROCK` | B | Set to `1` to route the Agent SDK through Bedrock. |
+| `AWS_REGION` | B | Region where Opus 4.7 is enabled for your AWS account (e.g. `us-west-2`). |
+| `ANTHROPIC_DEFAULT_OPUS_MODEL` | B | `us.anthropic.claude-opus-4-7` — the Bedrock cross-region inference profile. |
+| `AWS_PROFILE` *or* `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` | B | Pick one auth method. SSO profile works if you `aws sso login` first. |
 
-`.env.example` is the canonical list. `.env*` files are gitignored — never commit them.
+*Legend: A = required for Direct Anthropic API, B = required for Amazon Bedrock. Use one block, not both.*
+
+`.env.example` is the canonical list. `.env*` files are gitignored — never commit them. The server's bootstrap ([apps/server/src/index.ts](apps/server/src/index.ts)) loads the repo-root `.env` explicitly regardless of cwd, so you only need a single `.env` at the root.
 
 ## Common commands
 
@@ -110,7 +133,7 @@ Each stored Twilio credential is sealed with a specific key version, recorded in
 # 1. Generate a new key.
 NEW=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64'))")
 
-# 2. Set both keys in .env and .env (apps/server/.env), marking the new one as current:
+# 2. Set both keys in .env, marking the new one as current:
 #    APP_SECRET_KEY_V1=<your existing key, same bytes as APP_SECRET_KEY was>
 #    APP_SECRET_KEY_V2=<the new key you just generated>
 #    APP_SECRET_KEY_CURRENT=2
@@ -146,7 +169,8 @@ If a user rotates their Twilio API key in the Twilio console, open **Accounts �
 - **Fresh Postgres on a different schema?** Run `pnpm db:migrate`. The schema is idempotent.
 - **`pnpm install` prompts about native build scripts.** `argon2` and `esbuild` are allow-listed in `package.json`'s `pnpm.onlyBuiltDependencies`, so they build automatically.
 - **Session token column is `TEXT`, not `UUID`.** Intentional — we store 64-hex-char sha256 digests, wider than a UUID. Don't "fix" this.
-- **Bedrock 403 on first request?** Your AWS account needs explicit model access to `anthropic.claude-opus-4-v2-0` (or whatever Opus 4.7's concrete model ID is) in the chosen region. Granted in the Bedrock console under "Model access".
+- **Direct API 401 / `invalid_api_key`?** Check the key starts with `sk-ant-` and your account has a positive credit balance at [console.anthropic.com](https://console.anthropic.com/).
+- **Bedrock 403 on first request?** Your AWS account needs explicit model access to Claude Opus 4.7 in the chosen `AWS_REGION`. Granted in the Bedrock console under "Model access".
 - **`main().catch()` in server bootstrap.** Linter flags it as a preference warning — the pattern is correct for Fastify. Ignore.
 
 ## What's intentionally out of scope
