@@ -1,4 +1,7 @@
 import "./env.js";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import Fastify from "fastify";
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
@@ -8,6 +11,7 @@ import { accountRoutes } from "./accounts/routes.js";
 import { chatRoutes } from "./chat/routes.js";
 import { registerChatWs } from "./agent/ws.js";
 import { onCacheEvent } from "./agent/cache/registry.js";
+import { pool } from "./db/pool.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
 const WEB_ORIGIN = process.env.WEB_ORIGIN ?? "http://localhost:5173";
@@ -25,7 +29,18 @@ requireEnv("DATABASE_URL");
 requireEnv("APP_SECRET_KEY");
 requireEnv("SESSION_SECRET");
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+async function migrate() {
+  const schemaPath = path.join(__dirname, "db", "schema.sql");
+  const sql = await fs.readFile(schemaPath, "utf8");
+  await pool.query(sql);
+  console.log("[migrate] schema applied");
+}
+
 async function main() {
+  await migrate();
+
   const app = Fastify({ logger: true });
 
   await app.register(cookie, { secret: process.env.SESSION_SECRET });
